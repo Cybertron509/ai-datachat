@@ -295,7 +295,7 @@ def data_filtering_interface():
 
 
 def create_visualizations(df):
-    """Create interactive visualizations"""
+    """Create interactive visualizations with analytical guidance"""
     st.subheader("Interactive Visualizations")
     
     viz_type = st.selectbox(
@@ -310,35 +310,75 @@ def create_visualizations(df):
     if viz_type == "Histogram":
         if numeric_cols:
             col = st.selectbox("Select column:", numeric_cols, key="hist_column")
-            fig = px.histogram(df, x=col, title=f"Distribution of {col}")
+            st.info(f"Showing distribution of {col}. Look for patterns, outliers, or skewness.")
+            fig = px.histogram(df, x=col, title=f"Distribution of {col}", nbins=50)
             st.plotly_chart(fig, use_container_width=True)
+            
+            # Add basic statistics
+            st.write(f"**Mean:** {df[col].mean():.2f} | **Median:** {df[col].median():.2f} | **Std:** {df[col].std():.2f}")
     
     elif viz_type == "Scatter Plot":
         if len(numeric_cols) >= 2:
+            st.info("Use scatter plots to identify relationships between two numeric variables.")
             col1, col2 = st.columns(2)
             with col1:
                 x_col = st.selectbox("X-axis:", numeric_cols, key="scatter_x")
             with col2:
                 y_col = st.selectbox("Y-axis:", [c for c in numeric_cols if c != x_col], key="scatter_y")
             
-            color_col = st.selectbox("Color by (optional):", ["None"] + cat_cols, key="scatter_color")
+            color_col = st.selectbox("Color by (optional):", ["None"] + cat_cols + numeric_cols, key="scatter_color")
             color_col = None if color_col == "None" else color_col
             
-            fig = px.scatter(df, x=x_col, y=y_col, color=color_col, title=f"{x_col} vs {y_col}")
+            # Calculate correlation
+            correlation = df[[x_col, y_col]].corr().iloc[0, 1]
+            
+            fig = px.scatter(df.sample(min(5000, len(df))), x=x_col, y=y_col, color=color_col, 
+                           title=f"{x_col} vs {y_col} (Correlation: {correlation:.3f})",
+                           opacity=0.6)
             st.plotly_chart(fig, use_container_width=True)
+            
+            # Interpretation
+            if abs(correlation) > 0.7:
+                st.success(f"Strong correlation detected ({correlation:.3f})")
+            elif abs(correlation) > 0.4:
+                st.warning(f"Moderate correlation ({correlation:.3f})")
+            else:
+                st.info(f"Weak correlation ({correlation:.3f})")
     
     elif viz_type == "Bar Chart":
         if cat_cols and numeric_cols:
             cat_col = st.selectbox("Category:", cat_cols, key="bar_category")
             num_col = st.selectbox("Value:", numeric_cols, key="bar_value")
-            agg_func = st.selectbox("Aggregation:", ["sum", "mean", "count", "median"], key="bar_agg")
+            
+            # Intelligent default aggregation based on column name
+            default_agg = "mean"
+            if "count" in num_col.lower() or "total" in num_col.lower():
+                default_agg = "sum"
+            
+            agg_options = ["mean", "median", "sum", "count"]
+            default_idx = agg_options.index(default_agg)
+            agg_func = st.selectbox("Aggregation:", agg_options, index=default_idx, key="bar_agg")
+            
+            # Warning for inappropriate aggregations
+            if agg_func == "sum" and num_col.lower() in ["age", "bmi", "rating", "score", "hours", "sleep_hours", "sleep"]:
+                st.warning(f"💡 Note: Summing '{num_col}' may not be meaningful. Consider using 'mean' or 'median' instead.")
             
             grouped = df.groupby(cat_col)[num_col].agg(agg_func).reset_index()
-            fig = px.bar(grouped, x=cat_col, y=num_col, title=f"{agg_func.title()} of {num_col} by {cat_col}")
+            grouped = grouped.sort_values(num_col, ascending=False).head(20)
+            
+            fig = px.bar(grouped, x=cat_col, y=num_col, 
+                        title=f"{agg_func.title()} of {num_col} by {cat_col}")
             st.plotly_chart(fig, use_container_width=True)
+            
+            # Show insight
+            if agg_func in ["mean", "median"]:
+                max_cat = grouped.iloc[0][cat_col]
+                max_val = grouped.iloc[0][num_col]
+                st.info(f"Highest {agg_func}: {max_cat} ({max_val:.2f})")
     
     elif viz_type == "Box Plot":
         if numeric_cols:
+            st.info("Box plots show the distribution, median, quartiles, and outliers.")
             col = st.selectbox("Select column:", numeric_cols, key="box_column")
             group_by = st.selectbox("Group by (optional):", ["None"] + cat_cols, key="box_group")
             
@@ -348,19 +388,60 @@ def create_visualizations(df):
                 fig = px.box(df, x=group_by, y=col, title=f"Box Plot of {col} by {group_by}")
             
             st.plotly_chart(fig, use_container_width=True)
+            
+            # Show outlier count
+            Q1 = df[col].quantile(0.25)
+            Q3 = df[col].quantile(0.75)
+            IQR = Q3 - Q1
+            outliers = df[(df[col] < Q1 - 1.5 * IQR) | (df[col] > Q3 + 1.5 * IQR)]
+            if len(outliers) > 0:
+                st.warning(f"⚠️ Detected {len(outliers)} outliers ({len(outliers)/len(df)*100:.1f}% of data)")
     
     elif viz_type == "Correlation Heatmap":
         if len(numeric_cols) >= 2:
-            corr_matrix = df[numeric_cols].corr()
-            fig = px.imshow(corr_matrix, text_auto=True, aspect="auto", title="Correlation Heatmap")
+            st.info("Darker colors indicate stronger correlations. Look for patterns and relationships.")
+            
+            # Limit to reasonable number of columns
+            if len(numeric_cols) > 15:
+                st.warning("Too many columns for clear visualization. Showing top 15 most variable columns.")
+                variances = df[numeric_cols].var().sort_values(ascending=False)
+                selected_cols = variances.head(15).index.tolist()
+                corr_matrix = df[selected_cols].corr()
+            else:
+                corr_matrix = df[numeric_cols].corr()
+            
+            fig = px.imshow(corr_matrix, text_auto=".2f", aspect="auto", 
+                          title="Correlation Heatmap",
+                          color_continuous_scale="RdBu_r", zmin=-1, zmax=1)
             st.plotly_chart(fig, use_container_width=True)
+            
+            # Highlight strongest correlations
+            corr_flat = corr_matrix.abs().unstack()
+            corr_flat = corr_flat[corr_flat < 1].sort_values(ascending=False).head(3)
+            if len(corr_flat) > 0:
+                st.write("**Strongest correlations:**")
+                for (var1, var2), corr_val in corr_flat.items():
+                    actual_corr = corr_matrix.loc[var1, var2]
+                    st.write(f"- {var1} & {var2}: {actual_corr:.3f}")
     
     elif viz_type == "Line Chart":
         if numeric_cols:
+            st.info("Line charts work best for time series or sequential data.")
             y_col = st.selectbox("Y-axis:", numeric_cols, key="line_y")
             x_col = st.selectbox("X-axis:", df.columns.tolist(), key="line_x")
             
-            fig = px.line(df, x=x_col, y=y_col, title=f"{y_col} over {x_col}")
+            # Warning if X axis doesn't look sequential
+            if df[x_col].dtype == 'object':
+                st.warning(f"'{x_col}' is categorical. Line charts work best with sequential/time data.")
+            
+            # Limit data points for performance
+            if len(df) > 1000:
+                st.info(f"Sampling 1000 points for performance.")
+                plot_df = df.sample(min(1000, len(df))).sort_values(x_col)
+            else:
+                plot_df = df.sort_values(x_col)
+            
+            fig = px.line(plot_df, x=x_col, y=y_col, title=f"{y_col} over {x_col}")
             st.plotly_chart(fig, use_container_width=True)
 
 
