@@ -1,5 +1,5 @@
 """
-AI DataChat - Enhanced Main Application with Authentication
+AI DataChat - Enhanced Main Application with Authentication and Rate Limiting
 """
 import streamlit as st
 
@@ -28,6 +28,7 @@ from src.utils.file_handler import FileHandler
 from src.utils.data_analyzer import DataAnalyzer
 from src.agents.ai_agent import AIAgent
 from src.utils.auth import AuthManager
+from src.utils.rate_limiter import RateLimiter
 from config import settings
 
 logging.basicConfig(level=logging.INFO)
@@ -483,7 +484,7 @@ def display_statistics():
 
 
 def chat_interface():
-    """AI chat interface"""
+    """AI chat interface with rate limiting"""
     st.header("Chat with Your Data")
     
     if st.session_state.df_filtered is None:
@@ -494,31 +495,51 @@ def chat_interface():
         st.warning("AI Chat is not available. Please check your OpenAI API configuration and ensure you have sufficient credits.")
         return
     
+    # Display remaining queries
+    remaining = RateLimiter.get_remaining_queries()
+    if remaining > 0:
+        st.info(f"You have {remaining} question{'s' if remaining != 1 else ''} remaining")
+    else:
+        st.error("You've reached your question limit (2 questions per session). Reload the page or clear data to reset.")
+    
+    # Display chat history
     for message in st.session_state.chat_history:
         with st.chat_message(message["role"]):
             st.write(message["content"])
     
-    if prompt := st.chat_input("Ask a question about your data..."):
-        st.session_state.chat_history.append({"role": "user", "content": prompt})
-        
-        with st.chat_message("user"):
-            st.write(prompt)
-        
-        with st.chat_message("assistant"):
-            with st.spinner("Thinking..."):
-                try:
-                    response = st.session_state.ai_agent.analyze_data(
-                        st.session_state.df_filtered,
-                        prompt,
-                        st.session_state.data_summary
-                    )
-                    st.write(response)
-                    st.session_state.chat_history.append({"role": "assistant", "content": response})
-                    
-                except Exception as e:
-                    error_msg = f"Error: {str(e)}"
-                    st.error(error_msg)
-                    logger.error(error_msg)
+    # Chat input - only if queries remain
+    if RateLimiter.can_query():
+        if prompt := st.chat_input("Ask a question about your data..."):
+            st.session_state.chat_history.append({"role": "user", "content": prompt})
+            
+            with st.chat_message("user"):
+                st.write(prompt)
+            
+            with st.chat_message("assistant"):
+                with st.spinner("Thinking..."):
+                    try:
+                        response = st.session_state.ai_agent.analyze_data(
+                            st.session_state.df_filtered,
+                            prompt,
+                            st.session_state.data_summary
+                        )
+                        st.write(response)
+                        st.session_state.chat_history.append({"role": "assistant", "content": response})
+                        
+                        # Increment query count
+                        RateLimiter.increment_query()
+                        
+                        # Show updated count
+                        remaining = RateLimiter.get_remaining_queries()
+                        if remaining == 0:
+                            st.warning("That was your last question. Reload the page or clear data to reset.")
+                        else:
+                            st.rerun()
+                        
+                    except Exception as e:
+                        error_msg = f"Error: {str(e)}"
+                        st.error(error_msg)
+                        logger.error(error_msg)
 
 
 def main():
