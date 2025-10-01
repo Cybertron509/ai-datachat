@@ -129,8 +129,6 @@ def login_page():
                             st.success("Registration successful! Please login.")
                         else:
                             st.error("Username already exists")
-        
-        st.info("Default admin credentials: **username:** `admin` | **password:** `YopakaBarem26$`")
 
 
 def logout():
