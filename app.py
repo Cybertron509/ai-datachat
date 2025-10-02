@@ -1260,7 +1260,7 @@ def scenario_simulation_interface():
 
 
 def chat_interface():
-    """AI chat interface with rate limiting"""
+    """AI chat interface with per-user rate limiting"""
     st.header("Chat with Your Data")
     
     if st.session_state.df_filtered is None:
@@ -1275,21 +1275,24 @@ def chat_interface():
     from src.utils.subscription import SubscriptionManager
     sub_manager = SubscriptionManager()
     
-    remaining = sub_manager.get_remaining_ai_questions(
-        st.session_state.username,
-        RateLimiter.get_query_count()
-    )
+    username = st.session_state.username
+    remaining = sub_manager.get_remaining_ai_questions(username)
+    subscription = sub_manager.get_user_subscription(username)
+    tier = subscription.get('tier', 'free')
     
-    if remaining > 0:
-        if remaining < 999:
-            st.info(f"You have {remaining} question{'s' if remaining != 1 else ''} remaining")
-        # Don't show counter for pro users (999 limit)
+    # Show remaining questions
+    if tier == 'free':
+        if remaining > 0:
+            st.info(f"🎁 You have {remaining} free AI question{'s' if remaining != 1 else ''} remaining (lifetime)")
+        else:
+            st.error("❌ You've used all your free AI questions (2 lifetime limit)")
+            st.warning("Upgrade to Pro for unlimited AI chat!")
+            if st.button("Upgrade to Pro", key="upgrade_chat", type="primary"):
+                st.session_state.show_pricing = True
+                st.rerun()
+            return
     else:
-        st.error("You've reached your question limit. Upgrade to Pro for unlimited AI chat or reload the page to reset.")
-        if st.button("Upgrade to Pro", key="upgrade_chat"):
-            st.session_state.show_pricing = True
-            st.rerun()
-        return
+        st.success("✓ Pro Plan - Unlimited AI questions")
     
     # Display chat history
     for message in st.session_state.chat_history:
@@ -1315,25 +1318,22 @@ def chat_interface():
                         st.write(response)
                         st.session_state.chat_history.append({"role": "assistant", "content": response})
                         
-                        # Increment query count
-                        RateLimiter.increment_query()
+                        # Increment user's total question count (persisted to file)
+                        sub_manager.increment_ai_questions(username)
                         
-                        # Check remaining
-                        new_remaining = sub_manager.get_remaining_ai_questions(
-                            st.session_state.username,
-                            RateLimiter.get_query_count()
-                        )
+                        # Check remaining after increment
+                        new_remaining = sub_manager.get_remaining_ai_questions(username)
                         
-                        if new_remaining == 0:
-                            st.warning("That was your last question. Upgrade to Pro for unlimited AI chat or reload the page to reset.")
-                        else:
-                            st.rerun()
+                        if new_remaining == 0 and tier == 'free':
+                            st.warning("⚠️ That was your last free question! Upgrade to Pro for unlimited AI chat.")
+                            st.balloons()
+                        
+                        st.rerun()
                         
                     except Exception as e:
                         error_msg = f"Error: {str(e)}"
                         st.error(error_msg)
                         logger.error(error_msg)
-
 
 def subscription_interface():
     """Subscription and billing interface"""
@@ -1365,10 +1365,14 @@ def subscription_interface():
                 st.write(f"Renews: {subscription['expires_at'][:10]}")
         else:
             st.info("Free Plan")
+            # Show AI questions usage
+            ai_used = subscription.get('ai_questions_used', 0)
+            ai_limit = sub_manager.TIERS['free']['limits']['ai_questions']
+            st.write(f"AI Questions Used: {ai_used}/{ai_limit}")
     
     with col2:
         if current_tier == 'free':
-            if st.button("Upgrade to Pro", key="upgrade_button"):
+            if st.button("Upgrade to Pro", key="upgrade_button", type="primary"):
                 st.session_state.show_pricing = True
         else:
             st.write(f"**${tier_info['price']:.2f}/month**")
@@ -1405,7 +1409,7 @@ def subscription_interface():
                     if not user_email:
                         user_email = st.text_input("Email for billing:", key="billing_email")
                     
-                    if st.button("Subscribe Now", key="subscribe_pro_button", type="primary"):
+                    if user_email and st.button("Subscribe Now", key="subscribe_pro_button", type="primary"):
                         # Get price ID from secrets
                         price_id = st.secrets.get('STRIPE_PRO_PRICE_ID', '')
                         
@@ -1449,6 +1453,25 @@ def subscription_interface():
                 st.success("✓ Enabled")
             else:
                 st.error("✗ Pro Only")
+    
+    # Usage statistics for free tier
+    if current_tier == 'free':
+        st.markdown("---")
+        st.subheader("Usage Statistics")
+        
+        ai_used = subscription.get('ai_questions_used', 0)
+        ai_limit = sub_manager.TIERS['free']['limits']['ai_questions']
+        ai_remaining = ai_limit - ai_used
+        
+        progress_value = ai_used / ai_limit if ai_limit > 0 else 0
+        
+        st.write("**AI Chat Questions:**")
+        st.progress(progress_value, text=f"{ai_used} of {ai_limit} used ({ai_remaining} remaining)")
+        
+        if ai_remaining == 0:
+            st.error("⚠️ You've used all your free AI questions. Upgrade to Pro for unlimited access!")
+        elif ai_remaining == 1:
+            st.warning("⚠️ Only 1 free question remaining. Consider upgrading!")
 
 
 def main():
