@@ -56,6 +56,10 @@ def initialize_session_state():
         st.session_state.ai_agent = None
     if 'chat_history' not in st.session_state:
         st.session_state.chat_history = []
+    if 'narrative_report' not in st.session_state:
+        st.session_state.narrative_report = None
+    if 'html_report' not in st.session_state:
+        st.session_state.html_report = None
 
 
 def login_page():
@@ -143,6 +147,8 @@ def logout():
     st.session_state.data_summary = None
     st.session_state.ai_agent = None
     st.session_state.chat_history = []
+    st.session_state.narrative_report = None
+    st.session_state.html_report = None
     st.rerun()
 
 
@@ -486,7 +492,7 @@ def export_features():
     if st.session_state.df_filtered is None:
         return
     
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3, col4 = st.columns(4)
     
     with col1:
         csv = st.session_state.df_filtered.to_csv(index=False)
@@ -521,6 +527,65 @@ def export_features():
                 mime="text/plain",
                 key="download_chat_button"
             )
+    
+    with col4:
+        # Generate narrative report button
+        if st.button("Generate Report", key="generate_report_button"):
+            with st.spinner("Generating executive summary..."):
+                from src.utils.report_generator import ReportGenerator
+                
+                # Get quality report
+                quality_analyzer = DataQualityAnalyzer(st.session_state.df_filtered)
+                quality_report = quality_analyzer.calculate_trust_score()
+                
+                # Generate report
+                report_gen = ReportGenerator(
+                    st.session_state.df_filtered,
+                    quality_report,
+                    st.session_state.data_summary
+                )
+                
+                st.session_state.narrative_report = report_gen.generate_markdown_report()
+                st.session_state.html_report = report_gen.generate_html_report()
+                st.success("Report generated! Download options below.")
+    
+    # Show download buttons if report exists
+    if st.session_state.narrative_report:
+        st.markdown("---")
+        st.subheader("Narrative Report Downloads")
+        
+        col_a, col_b, col_c = st.columns(3)
+        
+        with col_a:
+            st.download_button(
+                label="Download as Markdown",
+                data=st.session_state.narrative_report,
+                file_name=f"analysis_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md",
+                mime="text/markdown",
+                key="download_md_report"
+            )
+        
+        with col_b:
+            st.download_button(
+                label="Download as HTML",
+                data=st.session_state.html_report,
+                file_name=f"analysis_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html",
+                mime="text/html",
+                key="download_html_report"
+            )
+        
+        with col_c:
+            st.download_button(
+                label="Download as Text",
+                data=st.session_state.narrative_report,
+                file_name=f"analysis_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
+                mime="text/plain",
+                key="download_txt_report"
+            )
+        
+        # Preview
+        with st.expander("Preview Report"):
+            st.markdown(st.session_state.narrative_report)
 
 
 def display_data_overview():
@@ -797,7 +862,7 @@ def main():
                 st.rerun()
             
             if st.button("Clear Data", key="clear_data_button"):
-                for key in ['df', 'df_filtered', 'file_info', 'data_summary', 'ai_agent', 'chat_history']:
+                for key in ['df', 'df_filtered', 'file_info', 'data_summary', 'ai_agent', 'chat_history', 'narrative_report', 'html_report']:
                     st.session_state[key] = None if key != 'chat_history' else []
                 st.rerun()
     
