@@ -2,9 +2,8 @@
 Subscription and Payment Management
 Handles Stripe integration and feature gates
 """
-import streamlit as st
 from datetime import datetime, timedelta
-from typing import Dict, Optional
+from typing import Dict
 import json
 from pathlib import Path
 import logging
@@ -128,17 +127,13 @@ class SubscriptionManager:
         return self.TIERS[tier]['limits'].get(feature, False)
     
     def get_remaining_ai_questions(self, username: str) -> int:
-        """Get remaining AI questions for user"""
+        """Get remaining AI questions for user - ONLY takes username parameter"""
         subscription = self.get_user_subscription(username)
         tier = subscription.get('tier', 'free')
         limit = self.TIERS[tier]['limits']['ai_questions']
         used = subscription.get('ai_questions_used', 0)
         
         return max(0, limit - used)
-    
-    def has_ai_questions_remaining(self, username: str) -> bool:
-        """Check if user has AI questions remaining"""
-        return self.get_remaining_ai_questions(username) > 0
     
     def upgrade_to_pro(self, username: str, stripe_customer_id: str, stripe_subscription_id: str):
         """Upgrade user to pro tier"""
