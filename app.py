@@ -1437,7 +1437,7 @@ def main():
     st.markdown('<p class="tagline">Universal Intelligence Through Data</p>', unsafe_allow_html=True)
     st.markdown("---")
     
-  with st.sidebar:
+    with st.sidebar:
         st.header("Upload Data")
         
         if st.button("Logout", key="logout_button", use_container_width=True):
