@@ -1,5 +1,5 @@
 """
-AI DataChat - Enhanced Main Application with Subscriptions and Monetization
+AI DataChat - Complete Application with Subscriptions and Monetization
 """
 import streamlit as st
 
@@ -28,7 +28,6 @@ from src.utils.file_handler import FileHandler
 from src.utils.data_analyzer import DataAnalyzer
 from src.agents.ai_agent import AIAgent
 from src.utils.auth import AuthManager
-from src.utils.rate_limiter import RateLimiter
 from src.utils.data_quality import DataQualityAnalyzer
 from config import settings
 
@@ -305,10 +304,9 @@ def data_filtering_interface():
 
 
 def create_visualizations(df):
-    """Create interactive visualizations with analytical guidance and performance optimization"""
+    """Create interactive visualizations"""
     st.subheader("Interactive Visualizations")
     
-    # Performance warning for large datasets
     if len(df) > 10000:
         st.warning(f"Large dataset detected ({len(df):,} rows). Some visualizations will use sampling for performance.")
     
@@ -321,7 +319,6 @@ def create_visualizations(df):
     numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
     cat_cols = df.select_dtypes(include=['object', 'category']).columns.tolist()
     
-    # Limit columns for large datasets
     max_cols_for_viz = 20
     if len(numeric_cols) > max_cols_for_viz:
         st.info(f"Dataset has {len(numeric_cols)} numeric columns. Selecting top {max_cols_for_viz} most variable for performance.")
@@ -333,7 +330,6 @@ def create_visualizations(df):
             col = st.selectbox("Select column:", numeric_cols, key="hist_column")
             st.info(f"Showing distribution of {col}. Look for patterns, outliers, or skewness.")
             
-            # Sample for very large datasets
             plot_df = df if len(df) <= 10000 else df.sample(10000)
             if len(df) > 10000:
                 st.caption(f"Showing sample of 10,000 from {len(df):,} total rows")
@@ -352,12 +348,10 @@ def create_visualizations(df):
             with col2:
                 y_col = st.selectbox("Y-axis:", [c for c in numeric_cols if c != x_col], key="scatter_y")
             
-            # Limit color options for performance
             color_options = ["None"] + cat_cols[:5] + numeric_cols[:5]
             color_col = st.selectbox("Color by (optional):", color_options, key="scatter_color")
             color_col = None if color_col == "None" else color_col
             
-            # Always sample scatter plots for performance
             sample_size = min(5000, len(df))
             plot_df = df.sample(sample_size) if len(df) > sample_size else df
             if len(df) > sample_size:
@@ -393,7 +387,6 @@ def create_visualizations(df):
             if agg_func == "sum" and num_col.lower() in ["age", "bmi", "rating", "score", "hours", "sleep_hours", "sleep"]:
                 st.warning(f"Note: Summing '{num_col}' may not be meaningful. Consider using 'mean' or 'median' instead.")
             
-            # Limit categories for readability
             grouped = df.groupby(cat_col)[num_col].agg(agg_func).reset_index()
             
             if len(grouped) > 30:
@@ -415,7 +408,6 @@ def create_visualizations(df):
             col = st.selectbox("Select column:", numeric_cols, key="box_column")
             group_by = st.selectbox("Group by (optional):", ["None"] + cat_cols[:10], key="box_group")
             
-            # Sample for large datasets
             plot_df = df if len(df) <= 10000 else df.sample(10000)
             if len(df) > 10000:
                 st.caption(f"Showing sample of 10,000 from {len(df):,} total rows")
@@ -423,7 +415,6 @@ def create_visualizations(df):
             if group_by == "None":
                 fig = px.box(plot_df, y=col, title=f"Box Plot of {col}")
             else:
-                # Limit groups
                 top_groups = df[group_by].value_counts().head(15).index
                 plot_df = plot_df[plot_df[group_by].isin(top_groups)]
                 fig = px.box(plot_df, x=group_by, y=col, title=f"Box Plot of {col} by {group_by}")
@@ -441,7 +432,6 @@ def create_visualizations(df):
         if len(numeric_cols) >= 2:
             st.info("Darker colors indicate stronger correlations. Look for patterns and relationships.")
             
-            # Limit columns for performance
             max_corr_cols = 15
             if len(numeric_cols) > max_corr_cols:
                 st.warning(f"Showing top {max_corr_cols} most variable columns for clarity.")
@@ -450,7 +440,6 @@ def create_visualizations(df):
             else:
                 selected_cols = numeric_cols
             
-            # Sample if dataset is large
             corr_df = df[selected_cols] if len(df) <= 20000 else df[selected_cols].sample(20000)
             corr_matrix = corr_df.corr()
             
@@ -476,7 +465,6 @@ def create_visualizations(df):
             if df[x_col].dtype == 'object':
                 st.warning(f"'{x_col}' is categorical. Line charts work best with sequential/time data.")
             
-            # Limit and sort data
             max_points = 1000
             if len(df) > max_points:
                 st.info(f"Sampling {max_points} points for performance.")
@@ -532,7 +520,6 @@ def export_features():
             )
     
     with col4:
-        # Feature gate for reports
         from src.utils.subscription import SubscriptionManager
         sub_manager = SubscriptionManager()
         
@@ -543,16 +530,13 @@ def export_features():
                 st.rerun()
             return
         
-        # Generate narrative report button
         if st.button("Generate Report", key="generate_report_button"):
             with st.spinner("Generating executive summary..."):
                 from src.utils.report_generator import ReportGenerator
                 
-                # Get quality report
                 quality_analyzer = DataQualityAnalyzer(st.session_state.df_filtered)
                 quality_report = quality_analyzer.calculate_trust_score()
                 
-                # Generate report
                 report_gen = ReportGenerator(
                     st.session_state.df_filtered,
                     quality_report,
@@ -563,7 +547,6 @@ def export_features():
                 st.session_state.html_report = report_gen.generate_html_report()
                 st.success("Report generated! Download options below.")
     
-    # Show download buttons if report exists
     if st.session_state.narrative_report:
         st.markdown("---")
         st.subheader("Narrative Report Downloads")
@@ -597,7 +580,6 @@ def export_features():
                 key="download_txt_report"
             )
         
-        # Preview
         with st.expander("Preview Report"):
             st.markdown(st.session_state.narrative_report)
 
@@ -611,7 +593,6 @@ def display_data_overview():
     
     df = st.session_state.df_filtered
     
-    # Metrics
     col1, col2, col3, col4 = st.columns(4)
     with col1:
         st.metric("Rows", f"{len(df):,}")
@@ -624,7 +605,6 @@ def display_data_overview():
         missing = df.isnull().sum().sum()
         st.metric("Missing Values", missing)
     
-    # Feature gate for trust score
     from src.utils.subscription import SubscriptionManager
     sub_manager = SubscriptionManager()
     
@@ -636,7 +616,6 @@ def display_data_overview():
             st.session_state.show_pricing = True
             st.rerun()
     else:
-        # Trust Score Section
         st.markdown("---")
         st.subheader("Data Quality & Trust Score")
         
@@ -644,14 +623,12 @@ def display_data_overview():
             quality_analyzer = DataQualityAnalyzer(df)
             quality_report = quality_analyzer.calculate_trust_score()
         
-        # Display trust score prominently
         score_col1, score_col2 = st.columns([1, 2])
         
         with score_col1:
             score = quality_report['overall_score']
             grade = quality_report['grade']
             
-            # Color based on score
             if score >= 80:
                 color = "green"
             elif score >= 60:
@@ -672,7 +649,6 @@ def display_data_overview():
             for component, comp_score in quality_report['component_scores'].items():
                 st.progress(comp_score / 100, text=f"{component.title()}: {comp_score:.0f}/100")
         
-        # Issues and recommendations
         col_issues, col_recommendations = st.columns(2)
         
         with col_issues:
@@ -698,14 +674,11 @@ def display_data_overview():
     
     st.markdown("---")
     
-    # Data preview
     st.subheader("Data Preview")
     st.dataframe(df.head(20), use_container_width=True)
     
-    # Visualizations
     create_visualizations(df)
     
-    # Export options
     export_features()
 
 
@@ -752,7 +725,6 @@ def display_statistics():
 def forecasting_interface():
     """Time-series forecasting interface"""
     
-    # Feature gate
     from src.utils.subscription import SubscriptionManager
     sub_manager = SubscriptionManager()
     
@@ -773,13 +745,11 @@ def forecasting_interface():
     
     df = st.session_state.df_filtered
     
-    # Check data quality
     quality_analyzer = DataQualityAnalyzer(df)
     quality_report = quality_analyzer.calculate_trust_score()
     
     score = quality_report['overall_score']
     
-    # Warning for low quality data
     if score < 100:
         st.warning(f"Data Trust Score: {score}/100. Forecasting works best with complete, clean data (100% trust score). Missing or inconsistent data may produce less accurate predictions.")
     else:
@@ -787,11 +757,9 @@ def forecasting_interface():
     
     st.markdown("---")
     
-    # Initialize forecaster
     from src.utils.forecaster import TimeSeriesForecaster
     forecaster = TimeSeriesForecaster(df)
     
-    # Detect time columns
     time_cols = forecaster.detect_time_columns()
     
     if not time_cols:
@@ -822,21 +790,17 @@ def forecasting_interface():
             key="forecast_value_col"
         )
     
-    # Forecast method
     method = st.radio(
         "Forecasting Method:",
         ["Exponential Smoothing (Recommended)", "ARIMA"],
         key="forecast_method"
     )
     
-    # Forecast button
     if st.button("Generate 6-Month Forecast", key="generate_forecast_button"):
         with st.spinner("Preparing time series data..."):
             try:
-                # Prepare data
                 series, validation = forecaster.prepare_time_series(date_col, value_col)
                 
-                # Display validation info
                 st.subheader("Data Validation")
                 col_a, col_b, col_c = st.columns(3)
                 
@@ -847,7 +811,6 @@ def forecasting_interface():
                 with col_c:
                     st.metric("Date Range", f"{validation['date_range'][0].strftime('%Y-%m-%d')} to {validation['date_range'][1].strftime('%Y-%m-%d')}")
                 
-                # Check minimum data requirement
                 if validation['total_points'] < 24:
                     st.error("Insufficient data for forecasting. At least 24 data points (2 years of monthly data) are recommended for reliable predictions.")
                     return
@@ -863,16 +826,13 @@ def forecasting_interface():
         
         with st.spinner("Generating forecast..."):
             try:
-                # Generate forecast (180 days = 6 months)
                 if "Exponential" in method:
                     fitted, forecast_df = forecaster.forecast_exponential_smoothing(series, periods=180)
                 else:
                     fitted, forecast_df = forecaster.forecast_arima(series, periods=180)
                 
-                # Evaluate on historical data
                 metrics = forecaster.evaluate_forecast(series, fitted)
                 
-                # Display metrics
                 st.subheader("Forecast Accuracy Metrics")
                 metric_col1, metric_col2, metric_col3, metric_col4 = st.columns(4)
                 
@@ -889,12 +849,10 @@ def forecasting_interface():
                 
                 st.markdown("---")
                 
-                # Visualization
                 st.subheader("Forecast Visualization")
                 
                 fig = go.Figure()
                 
-                # Historical data
                 fig.add_trace(go.Scatter(
                     x=series.index,
                     y=series.values,
@@ -903,7 +861,6 @@ def forecasting_interface():
                     line=dict(color='blue')
                 ))
                 
-                # Fitted values
                 fig.add_trace(go.Scatter(
                     x=fitted.index,
                     y=fitted.values,
@@ -912,7 +869,6 @@ def forecasting_interface():
                     line=dict(color='orange', dash='dash')
                 ))
                 
-                # Forecast
                 fig.add_trace(go.Scatter(
                     x=forecast_df.index,
                     y=forecast_df['forecast'].values,
@@ -921,7 +877,6 @@ def forecasting_interface():
                     line=dict(color='red')
                 ))
                 
-                # Confidence interval
                 fig.add_trace(go.Scatter(
                     x=forecast_df.index,
                     y=forecast_df['upper_bound'].values,
@@ -951,7 +906,6 @@ def forecasting_interface():
                 
                 st.plotly_chart(fig, use_container_width=True)
                 
-                # Forecast summary
                 st.subheader("Forecast Summary")
                 
                 last_actual = series.iloc[-1]
@@ -967,11 +921,9 @@ def forecasting_interface():
                 else:
                     st.warning(f"The model predicts a decrease of {abs(percent_change):.1f}% over the next 6 months.")
                 
-                # Export forecast
                 st.markdown("---")
                 st.subheader("Export Forecast")
                 
-                # Prepare export data
                 export_df = pd.DataFrame({
                     'date': forecast_df.index,
                     'forecast': forecast_df['forecast'].values,
@@ -997,7 +949,6 @@ def forecasting_interface():
 def scenario_simulation_interface():
     """What-if scenario simulation interface"""
     
-    # Feature gate
     from src.utils.subscription import SubscriptionManager
     sub_manager = SubscriptionManager()
     
@@ -1018,7 +969,6 @@ def scenario_simulation_interface():
     
     df = st.session_state.df_filtered
     
-    # Check for numeric columns
     numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
     
     if len(numeric_cols) < 2:
@@ -1027,18 +977,15 @@ def scenario_simulation_interface():
     
     st.info("Simulate business scenarios by changing variables and see the predicted impact on correlated metrics.")
     
-    # Initialize simulator
     from src.utils.scenario_simulator import ScenarioSimulator
     simulator = ScenarioSimulator(df)
     
     st.markdown("---")
     
-    # Show correlation overview
     with st.expander("View Variable Correlations"):
         st.write("**Strong correlations detected:**")
         correlations = simulator.correlations
         
-        # Find top correlations
         corr_pairs = []
         for i in range(len(correlations.columns)):
             for j in range(i+1, len(correlations.columns)):
@@ -1058,10 +1005,8 @@ def scenario_simulation_interface():
     
     st.markdown("---")
     
-    # Scenario configuration
     st.subheader("Configure Scenario")
     
-    # Method selection
     input_method = st.radio(
         "Input Method:",
         ["Text Description", "Manual Selection"],
@@ -1091,7 +1036,6 @@ def scenario_simulation_interface():
                 st.warning("Could not parse scenario. Try manual selection or use format: 'increase [variable] by [number]%'")
     
     else:
-        # Manual selection
         num_changes = st.slider("Number of variables to change:", 1, 3, 1, key="num_changes")
         
         for i in range(num_changes):
@@ -1117,14 +1061,12 @@ def scenario_simulation_interface():
                 'change_percent': change_pct
             })
     
-    # Correlation threshold
     corr_threshold = st.slider(
         "Correlation threshold (minimum to show secondary effects):",
         0.1, 0.9, 0.3, 0.1,
         key="corr_threshold"
     )
     
-    # Run simulation
     if st.button("Run Simulation", key="run_simulation_button") and changes:
         with st.spinner("Simulating scenario..."):
             results = simulator.simulate_scenario(changes, corr_threshold)
@@ -1132,7 +1074,6 @@ def scenario_simulation_interface():
             st.markdown("---")
             st.subheader("Simulation Results")
             
-            # Primary changes
             st.write("### Primary Changes")
             for change in results['primary_changes']:
                 col1, col2, col3 = st.columns(3)
@@ -1154,7 +1095,6 @@ def scenario_simulation_interface():
             
             st.markdown("---")
             
-            # Secondary effects
             if results['secondary_effects']:
                 st.write("### Predicted Secondary Effects")
                 st.caption("Based on historical correlations between variables")
@@ -1175,7 +1115,6 @@ def scenario_simulation_interface():
                             st.write(f"**Estimated:** {effect['estimated_value']:.2f}")
                             st.write(f"**Change:** {effect['absolute_change']:+.2f}")
                         
-                        # Confidence indicator
                         confidence = "High" if abs(effect['correlation']) > 0.7 else "Medium" if abs(effect['correlation']) > 0.5 else "Low"
                         st.caption(f"Confidence: {confidence} (based on correlation strength)")
             else:
@@ -1183,7 +1122,6 @@ def scenario_simulation_interface():
             
             st.markdown("---")
             
-            # Summary
             st.write("### Summary")
             summary_col1, summary_col2, summary_col3 = st.columns(3)
             
@@ -1194,7 +1132,6 @@ def scenario_simulation_interface():
             with summary_col3:
                 st.metric("Total Variables Affected", results['summary']['total_variables_affected'])
     
-    # Sensitivity analysis
     if changes and len(changes) == 1:
         st.markdown("---")
         st.subheader("Sensitivity Analysis")
@@ -1232,11 +1169,9 @@ def scenario_simulation_interface():
                         f"{sensitivity['optimistic_scenario']['change_percent']:.1f}%"
                     )
                 
-                # Sensitivity coefficient
                 st.write(f"**Sensitivity Coefficient:** {sensitivity['sensitivity_coefficient']:.2f}")
                 st.caption("This shows how much the outcome changes per 1% input change. Higher = more sensitive to changes.")
                 
-                # Visualization
                 scenarios_data = sensitivity['scenarios']
                 
                 fig = go.Figure()
@@ -1271,7 +1206,6 @@ def chat_interface():
         st.warning("AI Chat is not available. Please check your OpenAI API configuration and ensure you have sufficient credits.")
         return
     
-    # Get subscription-based limits
     from src.utils.subscription import SubscriptionManager
     sub_manager = SubscriptionManager()
     
@@ -1280,7 +1214,6 @@ def chat_interface():
     subscription = sub_manager.get_user_subscription(username)
     tier = subscription.get('tier', 'free')
     
-    # Show remaining questions
     if tier == 'free':
         if remaining > 0:
             st.info(f"🎁 You have {remaining} free AI question{'s' if remaining != 1 else ''} remaining (lifetime)")
@@ -1294,12 +1227,10 @@ def chat_interface():
     else:
         st.success("✓ Pro Plan - Unlimited AI questions")
     
-    # Display chat history
     for message in st.session_state.chat_history:
         with st.chat_message(message["role"]):
             st.write(message["content"])
     
-    # Chat input
     if remaining > 0:
         if prompt := st.chat_input("Ask a question about your data..."):
             st.session_state.chat_history.append({"role": "user", "content": prompt})
@@ -1318,10 +1249,8 @@ def chat_interface():
                         st.write(response)
                         st.session_state.chat_history.append({"role": "assistant", "content": response})
                         
-                        # Increment user's total question count (persisted to file)
                         sub_manager.increment_ai_questions(username)
                         
-                        # Check remaining after increment
                         new_remaining = sub_manager.get_remaining_ai_questions(username)
                         
                         if new_remaining == 0 and tier == 'free':
@@ -1334,6 +1263,7 @@ def chat_interface():
                         error_msg = f"Error: {str(e)}"
                         st.error(error_msg)
                         logger.error(error_msg)
+
 
 def subscription_interface():
     """Subscription and billing interface"""
@@ -1350,7 +1280,6 @@ def subscription_interface():
     
     current_tier = subscription.get('tier', 'free')
     
-    # Display current plan
     st.subheader("Current Plan")
     
     col1, col2 = st.columns([2, 1])
@@ -1365,7 +1294,6 @@ def subscription_interface():
                 st.write(f"Renews: {subscription['expires_at'][:10]}")
         else:
             st.info("Free Plan")
-            # Show AI questions usage
             ai_used = subscription.get('ai_questions_used', 0)
             ai_limit = sub_manager.TIERS['free']['limits']['ai_questions']
             st.write(f"AI Questions Used: {ai_used}/{ai_limit}")
@@ -1379,7 +1307,6 @@ def subscription_interface():
     
     st.markdown("---")
     
-    # Feature comparison
     if current_tier == 'free' or st.session_state.get('show_pricing', False):
         st.subheader("Compare Plans")
         
@@ -1410,7 +1337,6 @@ def subscription_interface():
                         user_email = st.text_input("Email for billing:", key="billing_email")
                     
                     if user_email and st.button("Subscribe Now", key="subscribe_pro_button", type="primary"):
-                        # Get price ID from secrets
                         price_id = st.secrets.get('STRIPE_PRO_PRICE_ID', '')
                         
                         if not price_id or price_id == 'price_xxxxx':
@@ -1433,7 +1359,6 @@ def subscription_interface():
             else:
                 st.success("✓ Current Plan")
     
-    # Feature gates info
     st.markdown("---")
     st.subheader("Feature Access")
     
@@ -1454,7 +1379,6 @@ def subscription_interface():
             else:
                 st.error("✗ Pro Only")
     
-    # Usage statistics for free tier
     if current_tier == 'free':
         st.markdown("---")
         st.subheader("Usage Statistics")
@@ -1478,12 +1402,10 @@ def main():
     """Main application"""
     initialize_session_state()
     
-    # Check authentication
     if not st.session_state.authenticated:
         login_page()
         return
     
-    # Custom CSS
     st.markdown("""
     <style>
         .main-header {
@@ -1508,16 +1430,13 @@ def main():
     </style>
     """, unsafe_allow_html=True)
     
-    # User info
     user_name = st.session_state.user_info.get("name", st.session_state.username)
     st.markdown(f'<p class="user-info">Logged in as: <strong>{user_name}</strong></p>', unsafe_allow_html=True)
     
-    # Header
     st.markdown('<h1 class="main-header">AI DataChat</h1>', unsafe_allow_html=True)
     st.markdown('<p class="tagline">Universal Intelligence Through Data</p>', unsafe_allow_html=True)
     st.markdown("---")
     
-   # Sidebar
     with st.sidebar:
         st.header("Upload Data")
         
@@ -1532,7 +1451,7 @@ def main():
             help="Upload CSV, Excel, or JSON files (max 2GB)"
         )
         
-        if uploaded_file:
+      if uploaded_file:
             if st.button("Load Data", key="load_data_button"):
                 with st.spinner("Loading data..."):
                     if load_data_file(uploaded_file):
@@ -1558,14 +1477,12 @@ def main():
                     st.session_state[key] = None if key != 'chat_history' else []
                 st.rerun()
     
-    # Main content
     if st.session_state.df is None:
         st.info("Upload a file to get started!")
         
         st.subheader("Welcome to AI DataChat")
         st.write("Transform your data into actionable insights with AI-powered analytics.")
         
-        # Show value proposition
         col1, col2 = st.columns(2)
         
         with col1:
