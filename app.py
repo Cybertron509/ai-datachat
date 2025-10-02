@@ -1437,7 +1437,7 @@ def main():
     st.markdown('<p class="tagline">Universal Intelligence Through Data</p>', unsafe_allow_html=True)
     st.markdown("---")
     
-    with st.sidebar:
+  with st.sidebar:
         st.header("Upload Data")
         
         if st.button("Logout", key="logout_button", use_container_width=True):
@@ -1451,7 +1451,7 @@ def main():
             help="Upload CSV, Excel, or JSON files (max 2GB)"
         )
         
-      if uploaded_file:
+        if uploaded_file:
             if st.button("Load Data", key="load_data_button"):
                 with st.spinner("Loading data..."):
                     if load_data_file(uploaded_file):
