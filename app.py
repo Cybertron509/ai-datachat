@@ -1487,7 +1487,7 @@ def main():
     st.markdown('<p class="tagline">Universal Intelligence Through Data</p>', unsafe_allow_html=True)
     st.markdown("---")
     
-    # Sidebar
+   # Sidebar
     with st.sidebar:
         st.header("Upload Data")
         
@@ -1496,7 +1496,7 @@ def main():
         
         st.markdown("---")
         
-       uploaded_file = st.file_uploader(
+        uploaded_file = st.file_uploader(
             "Choose a file",
             type=['csv', 'xlsx', 'xls', 'json'],
             help="Upload CSV, Excel, or JSON files (max 2GB)"
