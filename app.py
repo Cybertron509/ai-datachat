@@ -29,6 +29,7 @@ from src.utils.data_analyzer import DataAnalyzer
 from src.agents.ai_agent import AIAgent
 from src.utils.auth import AuthManager
 from src.utils.rate_limiter import RateLimiter
+from src.utils.data_quality import DataQualityAnalyzer
 from config import settings
 
 logging.basicConfig(level=logging.INFO)
@@ -523,7 +524,7 @@ def export_features():
 
 
 def display_data_overview():
-    """Enhanced data overview with visualizations"""
+    """Enhanced data overview with visualizations and trust score"""
     if st.session_state.df_filtered is None:
         return
     
@@ -543,6 +544,68 @@ def display_data_overview():
     with col4:
         missing = df.isnull().sum().sum()
         st.metric("Missing Values", missing)
+    
+    # Trust Score Section
+    st.markdown("---")
+    st.subheader("Data Quality & Trust Score")
+    
+    with st.spinner("Analyzing data quality..."):
+        quality_analyzer = DataQualityAnalyzer(df)
+        quality_report = quality_analyzer.calculate_trust_score()
+    
+    # Display trust score prominently
+    score_col1, score_col2 = st.columns([1, 2])
+    
+    with score_col1:
+        score = quality_report['overall_score']
+        grade = quality_report['grade']
+        
+        # Color based on score
+        if score >= 80:
+            color = "green"
+        elif score >= 60:
+            color = "orange"
+        else:
+            color = "red"
+        
+        st.markdown(f"""
+        <div style='text-align: center; padding: 20px; background-color: #f0f2f6; border-radius: 10px;'>
+            <h1 style='color: {color}; font-size: 3rem; margin: 0;'>{score}</h1>
+            <p style='font-size: 1.2rem; color: #666; margin: 5px 0;'>Trust Score</p>
+            <p style='font-size: 1rem; color: #888;'>{grade}</p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with score_col2:
+        st.write("**Component Scores:**")
+        for component, comp_score in quality_report['component_scores'].items():
+            st.progress(comp_score / 100, text=f"{component.title()}: {comp_score:.0f}/100")
+    
+    # Issues and recommendations
+    col_issues, col_recommendations = st.columns(2)
+    
+    with col_issues:
+        if quality_report['issues']:
+            st.error("**Critical Issues:**")
+            for issue in quality_report['issues']:
+                st.write(f"- {issue}")
+        
+        if quality_report['warnings']:
+            st.warning("**Warnings:**")
+            for warning in quality_report['warnings']:
+                st.write(f"- {warning}")
+        
+        if quality_report['info']:
+            with st.expander("Additional Information"):
+                for info in quality_report['info']:
+                    st.write(f"- {info}")
+    
+    with col_recommendations:
+        st.info("**Recommendations:**")
+        for rec in quality_report['recommendations']:
+            st.write(f"- {rec}")
+    
+    st.markdown("---")
     
     # Data preview
     st.subheader("Data Preview")
