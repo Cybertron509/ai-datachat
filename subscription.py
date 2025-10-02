@@ -7,6 +7,9 @@ from datetime import datetime, timedelta
 from typing import Dict, Optional
 import json
 from pathlib import Path
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class SubscriptionManager:
@@ -62,14 +65,21 @@ class SubscriptionManager:
     
     def _ensure_file_exists(self):
         """Create subscriptions file if it doesn't exist"""
-        if not self.subscriptions_file.exists():
-            with open(self.subscriptions_file, 'w') as f:
-                json.dump({}, f)
+        try:
+            if not self.subscriptions_file.exists():
+                with open(self.subscriptions_file, 'w') as f:
+                    json.dump({}, f)
+        except Exception as e:
+            logger.warning(f"Could not create subscriptions file: {str(e)}")
     
     def get_user_subscription(self, username: str) -> Dict:
         """Get user's subscription details"""
-        with open(self.subscriptions_file, 'r') as f:
-            subscriptions = json.load(f)
+        try:
+            with open(self.subscriptions_file, 'r') as f:
+                subscriptions = json.load(f)
+        except Exception as e:
+            logger.warning(f"Could not read subscriptions file: {str(e)}")
+            subscriptions = {}
         
         user_sub = subscriptions.get(username, {
             'tier': 'free',
@@ -88,13 +98,21 @@ class SubscriptionManager:
     
     def update_subscription(self, username: str, subscription_data: Dict):
         """Update user subscription"""
-        with open(self.subscriptions_file, 'r') as f:
-            subscriptions = json.load(f)
+        try:
+            with open(self.subscriptions_file, 'r') as f:
+                subscriptions = json.load(f)
+        except Exception as e:
+            logger.warning(f"Could not read subscriptions file for update: {str(e)}")
+            subscriptions = {}
         
         subscriptions[username] = subscription_data
         
-        with open(self.subscriptions_file, 'w') as f:
-            json.dump(subscriptions, f, indent=2)
+        try:
+            with open(self.subscriptions_file, 'w') as f:
+                json.dump(subscriptions, f, indent=2)
+        except Exception as e:
+            logger.error(f"Could not write to subscriptions file: {str(e)}")
+            raise
     
     def increment_ai_questions(self, username: str):
         """Increment AI questions used for user"""

@@ -1207,63 +1207,88 @@ def chat_interface():
         return
     
     from src.utils.subscription import SubscriptionManager
-    sub_manager = SubscriptionManager()
     
-    username = st.session_state.username
-    remaining = sub_manager.get_remaining_ai_questions(username)
-    subscription = sub_manager.get_user_subscription(username)
-    tier = subscription.get('tier', 'free')
-    
-    if tier == 'free':
-        if remaining > 0:
-            st.info(f"🎁 You have {remaining} free AI question{'s' if remaining != 1 else ''} remaining (lifetime)")
+    try:
+        sub_manager = SubscriptionManager()
+        username = st.session_state.username
+        
+        # Get remaining questions with error handling
+        try:
+            remaining = sub_manager.get_remaining_ai_questions(username)
+            subscription = sub_manager.get_user_subscription(username)
+            tier = subscription.get('tier', 'free')
+        except Exception as e:
+            st.error(f"Error loading subscription info: {str(e)}")
+            # Fallback to session-based limit
+            if 'chat_question_count' not in st.session_state:
+                st.session_state.chat_question_count = 0
+            remaining = max(0, 2 - st.session_state.chat_question_count)
+            tier = 'free'
+        
+        # Show remaining questions
+        if tier == 'free':
+            if remaining > 0:
+                st.info(f"🎁 You have {remaining} free AI question{'s' if remaining != 1 else ''} remaining (lifetime)")
+            else:
+                st.error("❌ You've used all your free AI questions (2 lifetime limit)")
+                st.warning("Upgrade to Pro for unlimited AI chat!")
+                if st.button("Upgrade to Pro", key="upgrade_chat", type="primary"):
+                    st.session_state.show_pricing = True
+                    st.rerun()
+                return
         else:
-            st.error("❌ You've used all your free AI questions (2 lifetime limit)")
-            st.warning("Upgrade to Pro for unlimited AI chat!")
-            if st.button("Upgrade to Pro", key="upgrade_chat", type="primary"):
-                st.session_state.show_pricing = True
-                st.rerun()
-            return
-    else:
-        st.success("✓ Pro Plan - Unlimited AI questions")
+            st.success("✓ Pro Plan - Unlimited AI questions")
+        
+        # Display chat history
+        for message in st.session_state.chat_history:
+            with st.chat_message(message["role"]):
+                st.write(message["content"])
+        
+        # Chat input
+        if remaining > 0:
+            if prompt := st.chat_input("Ask a question about your data..."):
+                st.session_state.chat_history.append({"role": "user", "content": prompt})
+                
+                with st.chat_message("user"):
+                    st.write(prompt)
+                
+                with st.chat_message("assistant"):
+                    with st.spinner("Thinking..."):
+                        try:
+                            response = st.session_state.ai_agent.analyze_data(
+                                st.session_state.df_filtered,
+                                prompt,
+                                st.session_state.data_summary
+                            )
+                            st.write(response)
+                            st.session_state.chat_history.append({"role": "assistant", "content": response})
+                            
+                            # Try to increment in subscription file
+                            try:
+                                sub_manager.increment_ai_questions(username)
+                                new_remaining = sub_manager.get_remaining_ai_questions(username)
+                            except Exception as e:
+                                # Fallback to session tracking
+                                logger.warning(f"Could not persist question count: {str(e)}")
+                                if 'chat_question_count' not in st.session_state:
+                                    st.session_state.chat_question_count = 0
+                                st.session_state.chat_question_count += 1
+                                new_remaining = max(0, 2 - st.session_state.chat_question_count)
+                            
+                            if new_remaining == 0 and tier == 'free':
+                                st.warning("⚠️ That was your last free question! Upgrade to Pro for unlimited AI chat.")
+                                st.balloons()
+                            
+                            st.rerun()
+                            
+                        except Exception as e:
+                            error_msg = f"Error: {str(e)}"
+                            st.error(error_msg)
+                            logger.error(error_msg)
     
-    for message in st.session_state.chat_history:
-        with st.chat_message(message["role"]):
-            st.write(message["content"])
-    
-    if remaining > 0:
-        if prompt := st.chat_input("Ask a question about your data..."):
-            st.session_state.chat_history.append({"role": "user", "content": prompt})
-            
-            with st.chat_message("user"):
-                st.write(prompt)
-            
-            with st.chat_message("assistant"):
-                with st.spinner("Thinking..."):
-                    try:
-                        response = st.session_state.ai_agent.analyze_data(
-                            st.session_state.df_filtered,
-                            prompt,
-                            st.session_state.data_summary
-                        )
-                        st.write(response)
-                        st.session_state.chat_history.append({"role": "assistant", "content": response})
-                        
-                        sub_manager.increment_ai_questions(username)
-                        
-                        new_remaining = sub_manager.get_remaining_ai_questions(username)
-                        
-                        if new_remaining == 0 and tier == 'free':
-                            st.warning("⚠️ That was your last free question! Upgrade to Pro for unlimited AI chat.")
-                            st.balloons()
-                        
-                        st.rerun()
-                        
-                    except Exception as e:
-                        error_msg = f"Error: {str(e)}"
-                        st.error(error_msg)
-                        logger.error(error_msg)
-
+    except Exception as e:
+        st.error(f"Error initializing chat: {str(e)}")
+        st.info("Please try refreshing the page or contact support if the issue persists.")
 
 def subscription_interface():
     """Subscription and billing interface"""
