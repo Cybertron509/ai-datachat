@@ -954,6 +954,257 @@ def forecasting_interface():
                 return
 
 
+def scenario_simulation_interface():
+    """What-if scenario simulation interface"""
+    st.header("Scenario Simulation - What If Analysis")
+    
+    if st.session_state.df_filtered is None:
+        st.info("Please load data first")
+        return
+    
+    df = st.session_state.df_filtered
+    
+    # Check for numeric columns
+    numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
+    
+    if len(numeric_cols) < 2:
+        st.error("Scenario simulation requires at least 2 numeric variables to analyze relationships.")
+        return
+    
+    st.info("Simulate business scenarios by changing variables and see the predicted impact on correlated metrics.")
+    
+    # Initialize simulator
+    from src.utils.scenario_simulator import ScenarioSimulator
+    simulator = ScenarioSimulator(df)
+    
+    st.markdown("---")
+    
+    # Show correlation overview
+    with st.expander("View Variable Correlations"):
+        st.write("**Strong correlations detected:**")
+        correlations = simulator.correlations
+        
+        # Find top correlations
+        corr_pairs = []
+        for i in range(len(correlations.columns)):
+            for j in range(i+1, len(correlations.columns)):
+                if abs(correlations.iloc[i, j]) >= 0.3:
+                    corr_pairs.append((
+                        correlations.columns[i],
+                        correlations.columns[j],
+                        correlations.iloc[i, j]
+                    ))
+        
+        if corr_pairs:
+            corr_pairs.sort(key=lambda x: abs(x[2]), reverse=True)
+            for var1, var2, corr in corr_pairs[:10]:
+                st.write(f"- **{var1}** ↔ **{var2}**: {corr:.3f}")
+        else:
+            st.write("No strong correlations found (threshold: 0.3)")
+    
+    st.markdown("---")
+    
+    # Scenario configuration
+    st.subheader("Configure Scenario")
+    
+    # Method selection
+    input_method = st.radio(
+        "Input Method:",
+        ["Text Description", "Manual Selection"],
+        key="scenario_input_method"
+    )
+    
+    changes = []
+    
+    if input_method == "Text Description":
+        st.write("**Enter your scenario in plain English:**")
+        st.caption("Examples: 'increase revenue by 20%' or 'increase sales 15% and reduce costs 10%'")
+        
+        scenario_text = st.text_input(
+            "Scenario:",
+            placeholder="increase revenue by 20%",
+            key="scenario_text_input"
+        )
+        
+        if scenario_text:
+            changes = simulator.parse_scenario_text(scenario_text)
+            
+            if changes:
+                st.success(f"Parsed {len(changes)} change(s):")
+                for change in changes:
+                    st.write(f"- {change['action'].title()} **{change['variable']}** by {abs(change['change_percent']):.1f}%")
+            else:
+                st.warning("Could not parse scenario. Try manual selection or use format: 'increase [variable] by [number]%'")
+    
+    else:
+        # Manual selection
+        num_changes = st.slider("Number of variables to change:", 1, 3, 1, key="num_changes")
+        
+        for i in range(num_changes):
+            col1, col2 = st.columns([2, 1])
+            
+            with col1:
+                variable = st.selectbox(
+                    f"Variable {i+1}:",
+                    numeric_cols,
+                    key=f"var_select_{i}"
+                )
+            
+            with col2:
+                change_pct = st.number_input(
+                    f"Change %:",
+                    value=10.0,
+                    step=5.0,
+                    key=f"change_pct_{i}"
+                )
+            
+            changes.append({
+                'variable': variable,
+                'change_percent': change_pct
+            })
+    
+    # Correlation threshold
+    corr_threshold = st.slider(
+        "Correlation threshold (minimum to show secondary effects):",
+        0.1, 0.9, 0.3, 0.1,
+        key="corr_threshold"
+    )
+    
+    # Run simulation
+    if st.button("Run Simulation", key="run_simulation_button") and changes:
+        with st.spinner("Simulating scenario..."):
+            results = simulator.simulate_scenario(changes, corr_threshold)
+            
+            st.markdown("---")
+            st.subheader("Simulation Results")
+            
+            # Primary changes
+            st.write("### Primary Changes")
+            for change in results['primary_changes']:
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    st.metric(
+                        change['variable'],
+                        f"{change['new_value']:.2f}",
+                        f"{change['change_percent']:+.1f}%"
+                    )
+                
+                with col2:
+                    st.write(f"**Current:** {change['current_value']:.2f}")
+                    st.write(f"**New:** {change['new_value']:.2f}")
+                
+                with col3:
+                    st.write(f"**Absolute Change:**")
+                    st.write(f"{change['absolute_change']:+.2f}")
+            
+            st.markdown("---")
+            
+            # Secondary effects
+            if results['secondary_effects']:
+                st.write("### Predicted Secondary Effects")
+                st.caption("Based on historical correlations between variables")
+                
+                for effect in results['secondary_effects']:
+                    with st.expander(f"{effect['variable']} (corr: {effect['correlation']:.3f} with {effect['affected_by']})"):
+                        col_a, col_b = st.columns(2)
+                        
+                        with col_a:
+                            st.metric(
+                                "Estimated New Value",
+                                f"{effect['estimated_value']:.2f}",
+                                f"{effect['estimated_change_percent']:+.1f}%"
+                            )
+                        
+                        with col_b:
+                            st.write(f"**Current:** {effect['current_value']:.2f}")
+                            st.write(f"**Estimated:** {effect['estimated_value']:.2f}")
+                            st.write(f"**Change:** {effect['absolute_change']:+.2f}")
+                        
+                        # Confidence indicator
+                        confidence = "High" if abs(effect['correlation']) > 0.7 else "Medium" if abs(effect['correlation']) > 0.5 else "Low"
+                        st.caption(f"Confidence: {confidence} (based on correlation strength)")
+            else:
+                st.info("No significant secondary effects detected at the current correlation threshold.")
+            
+            st.markdown("---")
+            
+            # Summary
+            st.write("### Summary")
+            summary_col1, summary_col2, summary_col3 = st.columns(3)
+            
+            with summary_col1:
+                st.metric("Variables Changed Directly", results['summary']['total_variables_changed'])
+            with summary_col2:
+                st.metric("Predicted Secondary Effects", results['summary']['total_secondary_effects'])
+            with summary_col3:
+                st.metric("Total Variables Affected", results['summary']['total_variables_affected'])
+    
+    # Sensitivity analysis
+    if changes and len(changes) == 1:
+        st.markdown("---")
+        st.subheader("Sensitivity Analysis")
+        st.write("See how outcomes change with different percentage adjustments")
+        
+        if st.button("Run Sensitivity Analysis", key="run_sensitivity_button"):
+            variable = changes[0]['variable']
+            base_change = changes[0]['change_percent']
+            
+            with st.spinner("Running sensitivity analysis..."):
+                sensitivity = simulator.sensitivity_analysis(variable, base_change, range_percent=10)
+                
+                st.write(f"**Testing {variable} changes from {base_change-10:.1f}% to {base_change+10:.1f}%**")
+                
+                sens_col1, sens_col2, sens_col3 = st.columns(3)
+                
+                with sens_col1:
+                    st.metric(
+                        "Pessimistic (-10%)",
+                        f"{sensitivity['pessimistic_scenario']['new_value']:.2f}",
+                        f"{sensitivity['pessimistic_scenario']['change_percent']:.1f}%"
+                    )
+                
+                with sens_col2:
+                    st.metric(
+                        "Base Scenario",
+                        f"{sensitivity['base_scenario']['new_value']:.2f}",
+                        f"{sensitivity['base_scenario']['change_percent']:.1f}%"
+                    )
+                
+                with sens_col3:
+                    st.metric(
+                        "Optimistic (+10%)",
+                        f"{sensitivity['optimistic_scenario']['new_value']:.2f}",
+                        f"{sensitivity['optimistic_scenario']['change_percent']:.1f}%"
+                    )
+                
+                # Sensitivity coefficient
+                st.write(f"**Sensitivity Coefficient:** {sensitivity['sensitivity_coefficient']:.2f}")
+                st.caption("This shows how much the outcome changes per 1% input change. Higher = more sensitive to changes.")
+                
+                # Visualization
+                scenarios_data = sensitivity['scenarios']
+                
+                fig = go.Figure()
+                fig.add_trace(go.Scatter(
+                    x=[s['change_percent'] for s in scenarios_data],
+                    y=[s['new_value'] for s in scenarios_data],
+                    mode='lines+markers',
+                    name=variable,
+                    line=dict(color='blue', width=3),
+                    marker=dict(size=10)
+                ))
+                
+                fig.update_layout(
+                    title=f"Sensitivity Analysis: {variable}",
+                    xaxis_title="Change Percentage (%)",
+                    yaxis_title="Resulting Value",
+                    height=400
+                )
+                
+                st.plotly_chart(fig, use_container_width=True)
+
+
 def chat_interface():
     """AI chat interface with rate limiting"""
     st.header("Chat with Your Data")
@@ -1104,7 +1355,7 @@ def main():
         st.subheader("Sample Datasets Available")
         st.write("You can find sample datasets in: `data/samples/`")
     else:
-        tab1, tab2, tab3, tab4 = st.tabs(["Overview", "Statistics", "Forecasting", "Chat"])
+        tab1, tab2, tab3, tab4, tab5 = st.tabs(["Overview", "Statistics", "Forecasting", "Scenarios", "Chat"])
         
         with tab1:
             display_data_overview()
@@ -1116,6 +1367,9 @@ def main():
             forecasting_interface()
         
         with tab4:
+            scenario_simulation_interface()
+        
+        with tab5:
             chat_interface()
 
 
