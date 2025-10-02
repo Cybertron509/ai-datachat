@@ -1206,17 +1206,37 @@ def chat_interface():
         st.warning("AI Chat is not available. Please check your OpenAI API configuration and ensure you have sufficient credits.")
         return
     
+    # Import fresh
+    import importlib
+    import sys
+    if 'src.utils.subscription' in sys.modules:
+        importlib.reload(sys.modules['src.utils.subscription'])
+    
     from src.utils.subscription import SubscriptionManager
     
     try:
         sub_manager = SubscriptionManager()
         username = st.session_state.username
         
+        # Debug: Check method signature
+        import inspect
+        sig = inspect.signature(sub_manager.get_remaining_ai_questions)
+        st.caption(f"Debug: Method signature: {sig}")
+        
         # Get remaining questions with error handling
         try:
+            # Explicitly call with ONLY username
             remaining = sub_manager.get_remaining_ai_questions(username)
             subscription = sub_manager.get_user_subscription(username)
             tier = subscription.get('tier', 'free')
+        except TypeError as e:
+            st.error(f"TypeError calling get_remaining_ai_questions: {str(e)}")
+            st.info("Falling back to session-based tracking")
+            # Fallback to session-based limit
+            if 'chat_question_count' not in st.session_state:
+                st.session_state.chat_question_count = 0
+            remaining = max(0, 2 - st.session_state.chat_question_count)
+            tier = 'free'
         except Exception as e:
             st.error(f"Error loading subscription info: {str(e)}")
             # Fallback to session-based limit
@@ -1288,7 +1308,15 @@ def chat_interface():
     
     except Exception as e:
         st.error(f"Error initializing chat: {str(e)}")
-        st.info("Please try refreshing the page or contact support if the issue persists.")
+        st.info("Using session-based question tracking as fallback")
+        if 'chat_question_count' not in st.session_state:
+            st.session_state.chat_question_count = 0
+        remaining = max(0, 2 - st.session_state.chat_question_count)
+        
+        if remaining > 0:
+            st.info(f"You have {remaining} questions remaining this session")
+        else:
+            st.error("You've used your 2 questions. Refresh the page for 2 more.")
 
 def subscription_interface():
     """Subscription and billing interface"""

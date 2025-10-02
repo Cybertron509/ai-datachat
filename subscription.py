@@ -1,6 +1,7 @@
 """
 Subscription and Payment Management
 Handles Stripe integration and feature gates
+VERSION: 2.0 - Per-user tracking (no session count)
 """
 from datetime import datetime, timedelta
 from typing import Dict
@@ -10,10 +11,12 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# Force reload marker
+_VERSION = "2.0"
+
 
 class SubscriptionManager:
-    """Manage user subscriptions and feature access"""
-    
+    """Manage user subscriptions and feature access"""    
     TIERS = {
         'free': {
             'name': 'Free',
