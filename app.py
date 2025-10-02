@@ -723,6 +723,237 @@ def display_statistics():
         clean_data_interface()
 
 
+def forecasting_interface():
+    """Time-series forecasting interface"""
+    st.header("Time-Series Forecasting")
+    
+    if st.session_state.df_filtered is None:
+        st.info("Please load data first")
+        return
+    
+    df = st.session_state.df_filtered
+    
+    # Check data quality
+    quality_analyzer = DataQualityAnalyzer(df)
+    quality_report = quality_analyzer.calculate_trust_score()
+    
+    score = quality_report['overall_score']
+    
+    # Warning for low quality data
+    if score < 100:
+        st.warning(f"Data Trust Score: {score}/100. Forecasting works best with complete, clean data (100% trust score). Missing or inconsistent data may produce less accurate predictions.")
+    else:
+        st.success(f"Data Trust Score: {score}/100. Excellent data quality for forecasting!")
+    
+    st.markdown("---")
+    
+    # Initialize forecaster
+    from src.utils.forecaster import TimeSeriesForecaster
+    forecaster = TimeSeriesForecaster(df)
+    
+    # Detect time columns
+    time_cols = forecaster.detect_time_columns()
+    
+    if not time_cols:
+        st.error("No date/time columns detected in the dataset. Forecasting requires a date column.")
+        st.info("**Tip:** Ensure your dataset has a column with dates in a recognizable format (e.g., '2024-01-01', '01/01/2024', etc.)")
+        return
+    
+    st.subheader("Configure Forecast")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        date_col = st.selectbox(
+            "Select Date Column:",
+            time_cols,
+            key="forecast_date_col"
+        )
+    
+    with col2:
+        numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
+        if not numeric_cols:
+            st.error("No numeric columns found for forecasting.")
+            return
+        
+        value_col = st.selectbox(
+            "Select Value to Forecast:",
+            numeric_cols,
+            key="forecast_value_col"
+        )
+    
+    # Forecast method
+    method = st.radio(
+        "Forecasting Method:",
+        ["Exponential Smoothing (Recommended)", "ARIMA"],
+        key="forecast_method"
+    )
+    
+    # Forecast button
+    if st.button("Generate 6-Month Forecast", key="generate_forecast_button"):
+        with st.spinner("Preparing time series data..."):
+            try:
+                # Prepare data
+                series, validation = forecaster.prepare_time_series(date_col, value_col)
+                
+                # Display validation info
+                st.subheader("Data Validation")
+                col_a, col_b, col_c = st.columns(3)
+                
+                with col_a:
+                    st.metric("Total Data Points", validation['total_points'])
+                with col_b:
+                    st.metric("Frequency", validation['frequency'])
+                with col_c:
+                    st.metric("Date Range", f"{validation['date_range'][0].strftime('%Y-%m-%d')} to {validation['date_range'][1].strftime('%Y-%m-%d')}")
+                
+                # Check minimum data requirement
+                if validation['total_points'] < 24:
+                    st.error("Insufficient data for forecasting. At least 24 data points (2 years of monthly data) are recommended for reliable predictions.")
+                    return
+                
+                if validation['missing_count'] > 0:
+                    st.warning(f"Found {validation['missing_count']} missing values. These have been removed, which may affect forecast accuracy.")
+                
+                st.markdown("---")
+                
+            except Exception as e:
+                st.error(f"Error preparing data: {str(e)}")
+                return
+        
+        with st.spinner("Generating forecast..."):
+            try:
+                # Generate forecast (180 days = 6 months)
+                if "Exponential" in method:
+                    fitted, forecast_df = forecaster.forecast_exponential_smoothing(series, periods=180)
+                else:
+                    fitted, forecast_df = forecaster.forecast_arima(series, periods=180)
+                
+                # Evaluate on historical data
+                metrics = forecaster.evaluate_forecast(series, fitted)
+                
+                # Display metrics
+                st.subheader("Forecast Accuracy Metrics")
+                metric_col1, metric_col2, metric_col3, metric_col4 = st.columns(4)
+                
+                with metric_col1:
+                    st.metric("MAE", f"{metrics['mae']:.2f}")
+                with metric_col2:
+                    st.metric("RMSE", f"{metrics['rmse']:.2f}")
+                with metric_col3:
+                    st.metric("MAPE", f"{metrics['mape']:.1f}%")
+                with metric_col4:
+                    st.metric("R²", f"{metrics['r_squared']:.3f}")
+                
+                st.caption("MAE: Mean Absolute Error | RMSE: Root Mean Square Error | MAPE: Mean Absolute Percentage Error | R²: Coefficient of Determination")
+                
+                st.markdown("---")
+                
+                # Visualization
+                st.subheader("Forecast Visualization")
+                
+                fig = go.Figure()
+                
+                # Historical data
+                fig.add_trace(go.Scatter(
+                    x=series.index,
+                    y=series.values,
+                    mode='lines',
+                    name='Historical Data',
+                    line=dict(color='blue')
+                ))
+                
+                # Fitted values
+                fig.add_trace(go.Scatter(
+                    x=fitted.index,
+                    y=fitted.values,
+                    mode='lines',
+                    name='Fitted Values',
+                    line=dict(color='orange', dash='dash')
+                ))
+                
+                # Forecast
+                fig.add_trace(go.Scatter(
+                    x=forecast_df.index,
+                    y=forecast_df['forecast'].values,
+                    mode='lines',
+                    name='6-Month Forecast',
+                    line=dict(color='red')
+                ))
+                
+                # Confidence interval
+                fig.add_trace(go.Scatter(
+                    x=forecast_df.index,
+                    y=forecast_df['upper_bound'].values,
+                    mode='lines',
+                    line=dict(width=0),
+                    showlegend=False,
+                    hoverinfo='skip'
+                ))
+                
+                fig.add_trace(go.Scatter(
+                    x=forecast_df.index,
+                    y=forecast_df['lower_bound'].values,
+                    mode='lines',
+                    line=dict(width=0),
+                    fill='tonexty',
+                    fillcolor='rgba(255, 0, 0, 0.2)',
+                    name='95% Confidence Interval'
+                ))
+                
+                fig.update_layout(
+                    title=f"{value_col} - Historical Data and 6-Month Forecast",
+                    xaxis_title="Date",
+                    yaxis_title=value_col,
+                    hovermode='x unified',
+                    height=600
+                )
+                
+                st.plotly_chart(fig, use_container_width=True)
+                
+                # Forecast summary
+                st.subheader("Forecast Summary")
+                
+                last_actual = series.iloc[-1]
+                last_forecast = forecast_df['forecast'].iloc[-1]
+                percent_change = ((last_forecast - last_actual) / last_actual) * 100
+                
+                st.write(f"**Current Value ({series.index[-1].strftime('%Y-%m-%d')}):** {last_actual:.2f}")
+                st.write(f"**Forecasted Value (6 months ahead):** {last_forecast:.2f}")
+                st.write(f"**Expected Change:** {percent_change:+.1f}%")
+                
+                if percent_change > 0:
+                    st.success(f"The model predicts an increase of {abs(percent_change):.1f}% over the next 6 months.")
+                else:
+                    st.warning(f"The model predicts a decrease of {abs(percent_change):.1f}% over the next 6 months.")
+                
+                # Export forecast
+                st.markdown("---")
+                st.subheader("Export Forecast")
+                
+                # Prepare export data
+                export_df = pd.DataFrame({
+                    'date': forecast_df.index,
+                    'forecast': forecast_df['forecast'].values,
+                    'lower_95': forecast_df['lower_bound'].values,
+                    'upper_95': forecast_df['upper_bound'].values
+                })
+                
+                csv_export = export_df.to_csv(index=False)
+                
+                st.download_button(
+                    label="Download Forecast as CSV",
+                    data=csv_export,
+                    file_name=f"forecast_{value_col}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                    mime="text/csv"
+                )
+                
+            except Exception as e:
+                st.error(f"Error generating forecast: {str(e)}")
+                st.info("Try using a different forecasting method or check your data format.")
+                return
+
+
 def chat_interface():
     """AI chat interface with rate limiting"""
     st.header("Chat with Your Data")
@@ -873,7 +1104,7 @@ def main():
         st.subheader("Sample Datasets Available")
         st.write("You can find sample datasets in: `data/samples/`")
     else:
-        tab1, tab2, tab3 = st.tabs(["Overview", "Statistics", "Chat"])
+        tab1, tab2, tab3, tab4 = st.tabs(["Overview", "Statistics", "Forecasting", "Chat"])
         
         with tab1:
             display_data_overview()
@@ -882,6 +1113,9 @@ def main():
             display_statistics()
         
         with tab3:
+            forecasting_interface()
+        
+        with tab4:
             chat_interface()
 
 
