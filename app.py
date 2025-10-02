@@ -1,5 +1,5 @@
 """
-AI DataChat - Enhanced Main Application with Authentication and Rate Limiting
+AI DataChat - Enhanced Main Application with Subscriptions and Monetization
 """
 import streamlit as st
 
@@ -60,6 +60,8 @@ def initialize_session_state():
         st.session_state.narrative_report = None
     if 'html_report' not in st.session_state:
         st.session_state.html_report = None
+    if 'show_pricing' not in st.session_state:
+        st.session_state.show_pricing = False
 
 
 def login_page():
@@ -149,6 +151,7 @@ def logout():
     st.session_state.chat_history = []
     st.session_state.narrative_report = None
     st.session_state.html_report = None
+    st.session_state.show_pricing = False
     st.rerun()
 
 
@@ -529,6 +532,17 @@ def export_features():
             )
     
     with col4:
+        # Feature gate for reports
+        from src.utils.subscription import SubscriptionManager
+        sub_manager = SubscriptionManager()
+        
+        if not sub_manager.can_access_feature(st.session_state.username, 'reports'):
+            st.info("Report generation is a Pro feature")
+            if st.button("Upgrade", key="upgrade_reports_btn"):
+                st.session_state.show_pricing = True
+                st.rerun()
+            return
+        
         # Generate narrative report button
         if st.button("Generate Report", key="generate_report_button"):
             with st.spinner("Generating executive summary..."):
@@ -610,65 +624,77 @@ def display_data_overview():
         missing = df.isnull().sum().sum()
         st.metric("Missing Values", missing)
     
-    # Trust Score Section
-    st.markdown("---")
-    st.subheader("Data Quality & Trust Score")
+    # Feature gate for trust score
+    from src.utils.subscription import SubscriptionManager
+    sub_manager = SubscriptionManager()
     
-    with st.spinner("Analyzing data quality..."):
-        quality_analyzer = DataQualityAnalyzer(df)
-        quality_report = quality_analyzer.calculate_trust_score()
-    
-    # Display trust score prominently
-    score_col1, score_col2 = st.columns([1, 2])
-    
-    with score_col1:
-        score = quality_report['overall_score']
-        grade = quality_report['grade']
+    if not sub_manager.can_access_feature(st.session_state.username, 'trust_score'):
+        st.markdown("---")
+        st.info("Data Quality Trust Score is a Pro feature")
+        st.write("Upgrade to unlock comprehensive data quality analysis with actionable recommendations.")
+        if st.button("View Pricing", key="upgrade_trust_score"):
+            st.session_state.show_pricing = True
+            st.rerun()
+    else:
+        # Trust Score Section
+        st.markdown("---")
+        st.subheader("Data Quality & Trust Score")
         
-        # Color based on score
-        if score >= 80:
-            color = "green"
-        elif score >= 60:
-            color = "orange"
-        else:
-            color = "red"
+        with st.spinner("Analyzing data quality..."):
+            quality_analyzer = DataQualityAnalyzer(df)
+            quality_report = quality_analyzer.calculate_trust_score()
         
-        st.markdown(f"""
-        <div style='text-align: center; padding: 20px; background-color: #f0f2f6; border-radius: 10px;'>
-            <h1 style='color: {color}; font-size: 3rem; margin: 0;'>{score}</h1>
-            <p style='font-size: 1.2rem; color: #666; margin: 5px 0;'>Trust Score</p>
-            <p style='font-size: 1rem; color: #888;'>{grade}</p>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    with score_col2:
-        st.write("**Component Scores:**")
-        for component, comp_score in quality_report['component_scores'].items():
-            st.progress(comp_score / 100, text=f"{component.title()}: {comp_score:.0f}/100")
-    
-    # Issues and recommendations
-    col_issues, col_recommendations = st.columns(2)
-    
-    with col_issues:
-        if quality_report['issues']:
-            st.error("**Critical Issues:**")
-            for issue in quality_report['issues']:
-                st.write(f"- {issue}")
+        # Display trust score prominently
+        score_col1, score_col2 = st.columns([1, 2])
         
-        if quality_report['warnings']:
-            st.warning("**Warnings:**")
-            for warning in quality_report['warnings']:
-                st.write(f"- {warning}")
+        with score_col1:
+            score = quality_report['overall_score']
+            grade = quality_report['grade']
+            
+            # Color based on score
+            if score >= 80:
+                color = "green"
+            elif score >= 60:
+                color = "orange"
+            else:
+                color = "red"
+            
+            st.markdown(f"""
+            <div style='text-align: center; padding: 20px; background-color: #f0f2f6; border-radius: 10px;'>
+                <h1 style='color: {color}; font-size: 3rem; margin: 0;'>{score}</h1>
+                <p style='font-size: 1.2rem; color: #666; margin: 5px 0;'>Trust Score</p>
+                <p style='font-size: 1rem; color: #888;'>{grade}</p>
+            </div>
+            """, unsafe_allow_html=True)
         
-        if quality_report['info']:
-            with st.expander("Additional Information"):
-                for info in quality_report['info']:
-                    st.write(f"- {info}")
-    
-    with col_recommendations:
-        st.info("**Recommendations:**")
-        for rec in quality_report['recommendations']:
-            st.write(f"- {rec}")
+        with score_col2:
+            st.write("**Component Scores:**")
+            for component, comp_score in quality_report['component_scores'].items():
+                st.progress(comp_score / 100, text=f"{component.title()}: {comp_score:.0f}/100")
+        
+        # Issues and recommendations
+        col_issues, col_recommendations = st.columns(2)
+        
+        with col_issues:
+            if quality_report['issues']:
+                st.error("**Critical Issues:**")
+                for issue in quality_report['issues']:
+                    st.write(f"- {issue}")
+            
+            if quality_report['warnings']:
+                st.warning("**Warnings:**")
+                for warning in quality_report['warnings']:
+                    st.write(f"- {warning}")
+            
+            if quality_report['info']:
+                with st.expander("Additional Information"):
+                    for info in quality_report['info']:
+                        st.write(f"- {info}")
+        
+        with col_recommendations:
+            st.info("**Recommendations:**")
+            for rec in quality_report['recommendations']:
+                st.write(f"- {rec}")
     
     st.markdown("---")
     
@@ -725,6 +751,20 @@ def display_statistics():
 
 def forecasting_interface():
     """Time-series forecasting interface"""
+    
+    # Feature gate
+    from src.utils.subscription import SubscriptionManager
+    sub_manager = SubscriptionManager()
+    
+    if not sub_manager.can_access_feature(st.session_state.username, 'forecasting'):
+        st.header("Time-Series Forecasting")
+        st.warning("Time-Series Forecasting is a Pro feature")
+        st.info("Upgrade to Pro to unlock 6-month predictions with confidence intervals, accuracy metrics, and CSV export.")
+        if st.button("View Pricing", key="upgrade_forecasting"):
+            st.session_state.show_pricing = True
+            st.rerun()
+        return
+    
     st.header("Time-Series Forecasting")
     
     if st.session_state.df_filtered is None:
@@ -956,6 +996,20 @@ def forecasting_interface():
 
 def scenario_simulation_interface():
     """What-if scenario simulation interface"""
+    
+    # Feature gate
+    from src.utils.subscription import SubscriptionManager
+    sub_manager = SubscriptionManager()
+    
+    if not sub_manager.can_access_feature(st.session_state.username, 'scenarios'):
+        st.header("Scenario Simulation - What If Analysis")
+        st.warning("Scenario Simulation is a Pro feature")
+        st.info("Upgrade to Pro to unlock multi-variable what-if analysis with sensitivity testing and correlation-based predictions.")
+        if st.button("View Pricing", key="upgrade_scenarios"):
+            st.session_state.show_pricing = True
+            st.rerun()
+        return
+    
     st.header("Scenario Simulation - What If Analysis")
     
     if st.session_state.df_filtered is None:
@@ -1217,20 +1271,33 @@ def chat_interface():
         st.warning("AI Chat is not available. Please check your OpenAI API configuration and ensure you have sufficient credits.")
         return
     
-    # Display remaining queries
-    remaining = RateLimiter.get_remaining_queries()
+    # Get subscription-based limits
+    from src.utils.subscription import SubscriptionManager
+    sub_manager = SubscriptionManager()
+    
+    remaining = sub_manager.get_remaining_ai_questions(
+        st.session_state.username,
+        RateLimiter.get_query_count()
+    )
+    
     if remaining > 0:
-        st.info(f"You have {remaining} question{'s' if remaining != 1 else ''} remaining")
+        if remaining < 999:
+            st.info(f"You have {remaining} question{'s' if remaining != 1 else ''} remaining")
+        # Don't show counter for pro users (999 limit)
     else:
-        st.error("You've reached your question limit (2 questions per session). Reload the page or clear data to reset.")
+        st.error("You've reached your question limit. Upgrade to Pro for unlimited AI chat or reload the page to reset.")
+        if st.button("Upgrade to Pro", key="upgrade_chat"):
+            st.session_state.show_pricing = True
+            st.rerun()
+        return
     
     # Display chat history
     for message in st.session_state.chat_history:
         with st.chat_message(message["role"]):
             st.write(message["content"])
     
-    # Chat input - only if queries remain
-    if RateLimiter.can_query():
+    # Chat input
+    if remaining > 0:
         if prompt := st.chat_input("Ask a question about your data..."):
             st.session_state.chat_history.append({"role": "user", "content": prompt})
             
@@ -1251,10 +1318,14 @@ def chat_interface():
                         # Increment query count
                         RateLimiter.increment_query()
                         
-                        # Show updated count
-                        remaining = RateLimiter.get_remaining_queries()
-                        if remaining == 0:
-                            st.warning("That was your last question. Reload the page or clear data to reset.")
+                        # Check remaining
+                        new_remaining = sub_manager.get_remaining_ai_questions(
+                            st.session_state.username,
+                            RateLimiter.get_query_count()
+                        )
+                        
+                        if new_remaining == 0:
+                            st.warning("That was your last question. Upgrade to Pro for unlimited AI chat or reload the page to reset.")
                         else:
                             st.rerun()
                         
@@ -1262,6 +1333,115 @@ def chat_interface():
                         error_msg = f"Error: {str(e)}"
                         st.error(error_msg)
                         logger.error(error_msg)
+
+
+def subscription_interface():
+    """Subscription and billing interface"""
+    st.header("Subscription & Billing")
+    
+    from src.utils.subscription import SubscriptionManager
+    from src.utils.stripe_handler import StripeHandler
+    
+    sub_manager = SubscriptionManager()
+    stripe_handler = StripeHandler()
+    
+    username = st.session_state.username
+    subscription = sub_manager.get_user_subscription(username)
+    
+    current_tier = subscription.get('tier', 'free')
+    
+    # Display current plan
+    st.subheader("Current Plan")
+    
+    col1, col2 = st.columns([2, 1])
+    
+    with col1:
+        tier_info = sub_manager.TIERS[current_tier]
+        st.write(f"**{tier_info['name']} Plan**")
+        
+        if current_tier == 'pro':
+            st.success("Pro Subscription Active")
+            if subscription.get('expires_at'):
+                st.write(f"Renews: {subscription['expires_at'][:10]}")
+        else:
+            st.info("Free Plan")
+    
+    with col2:
+        if current_tier == 'free':
+            if st.button("Upgrade to Pro", key="upgrade_button"):
+                st.session_state.show_pricing = True
+        else:
+            st.write(f"**${tier_info['price']:.2f}/month**")
+    
+    st.markdown("---")
+    
+    # Feature comparison
+    if current_tier == 'free' or st.session_state.get('show_pricing', False):
+        st.subheader("Compare Plans")
+        
+        col_free, col_pro = st.columns(2)
+        
+        with col_free:
+            st.write("### Free")
+            st.write("**$0/month**")
+            st.write("")
+            for feature in sub_manager.TIERS['free']['features']:
+                st.write(f"- {feature}")
+            st.write("")
+            st.caption("Perfect for getting started")
+        
+        with col_pro:
+            st.write("### Pro")
+            st.write("**$24.99/month**")
+            st.write("")
+            for feature in sub_manager.TIERS['pro']['features']:
+                st.write(f"- {feature}")
+            st.write("")
+            
+            if current_tier == 'free':
+                if stripe_handler.is_configured():
+                    user_email = st.session_state.user_info.get('email', '')
+                    
+                    if not user_email:
+                        user_email = st.text_input("Email for billing:", key="billing_email")
+                    
+                    if st.button("Subscribe Now", key="subscribe_pro_button", type="primary"):
+                        price_id = st.secrets.get('STRIPE_PRO_PRICE_ID', 'price_xxxxx')
+                        
+                        checkout_url = stripe_handler.create_checkout_session(
+                            username,
+                            user_email,
+                            price_id
+                        )
+                        
+                        if checkout_url:
+                            st.markdown(stripe_handler.get_checkout_button_html(checkout_url), unsafe_allow_html=True)
+                else:
+                    st.warning("Payment processing is not configured yet.")
+                    st.info("To enable payments, configure Stripe in the admin panel or contact support@aidatachat.com")
+            else:
+                st.success("Current Plan")
+    
+    # Feature gates info
+    st.markdown("---")
+    st.subheader("Feature Access")
+    
+    features_status = {
+        'Time-Series Forecasting': sub_manager.can_access_feature(username, 'forecasting'),
+        'Scenario Simulation': sub_manager.can_access_feature(username, 'scenarios'),
+        'Data Quality Trust Score': sub_manager.can_access_feature(username, 'trust_score'),
+        'Narrative Reports': sub_manager.can_access_feature(username, 'reports'),
+    }
+    
+    for feature, has_access in features_status.items():
+        col_a, col_b = st.columns([3, 1])
+        with col_a:
+            st.write(feature)
+        with col_b:
+            if has_access:
+                st.success("Enabled")
+            else:
+                st.error("Pro Only")
 
 
 def main():
@@ -1316,7 +1496,7 @@ def main():
         
         st.markdown("---")
         
-        uploaded_file = st.file_uploader(
+       uploaded_file = st.file_uploader(
             "Choose a file",
             type=['csv', 'xlsx', 'xls', 'json'],
             help="Upload CSV, Excel, or JSON files (max 2GB)"
@@ -1352,10 +1532,28 @@ def main():
     if st.session_state.df is None:
         st.info("Upload a file to get started!")
         
-        st.subheader("Sample Datasets Available")
-        st.write("You can find sample datasets in: `data/samples/`")
+        st.subheader("Welcome to AI DataChat")
+        st.write("Transform your data into actionable insights with AI-powered analytics.")
+        
+        # Show value proposition
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.write("**What you can do:**")
+            st.write("- Upload and analyze CSV, Excel, JSON files")
+            st.write("- Interactive visualizations and statistics")
+            st.write("- Data cleaning and filtering")
+            st.write("- AI-powered chat with your data")
+        
+        with col2:
+            st.write("**Pro Features:**")
+            st.write("- Time-series forecasting (6-month predictions)")
+            st.write("- Scenario simulation (what-if analysis)")
+            st.write("- Data quality trust scores")
+            st.write("- Automated narrative reports")
+            st.write("- Unlimited AI questions")
     else:
-        tab1, tab2, tab3, tab4, tab5 = st.tabs(["Overview", "Statistics", "Forecasting", "Scenarios", "Chat"])
+        tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["Overview", "Statistics", "Forecasting", "Scenarios", "Chat", "Subscription"])
         
         with tab1:
             display_data_overview()
@@ -1371,6 +1569,9 @@ def main():
         
         with tab5:
             chat_interface()
+        
+        with tab6:
+            subscription_interface()
 
 
 if __name__ == "__main__":
