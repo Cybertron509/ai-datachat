@@ -1360,7 +1360,7 @@ def subscription_interface():
         st.write(f"**{tier_info['name']} Plan**")
         
         if current_tier == 'pro':
-            st.success("Pro Subscription Active")
+            st.success("✓ Pro Subscription Active")
             if subscription.get('expires_at'):
                 st.write(f"Renews: {subscription['expires_at'][:10]}")
         else:
@@ -1386,7 +1386,7 @@ def subscription_interface():
             st.write("**$0/month**")
             st.write("")
             for feature in sub_manager.TIERS['free']['features']:
-                st.write(f"- {feature}")
+                st.write(f"✓ {feature}")
             st.write("")
             st.caption("Perfect for getting started")
         
@@ -1395,7 +1395,7 @@ def subscription_interface():
             st.write("**$24.99/month**")
             st.write("")
             for feature in sub_manager.TIERS['pro']['features']:
-                st.write(f"- {feature}")
+                st.write(f"✓ {feature}")
             st.write("")
             
             if current_tier == 'free':
@@ -1406,21 +1406,28 @@ def subscription_interface():
                         user_email = st.text_input("Email for billing:", key="billing_email")
                     
                     if st.button("Subscribe Now", key="subscribe_pro_button", type="primary"):
-                        price_id = st.secrets.get('STRIPE_PRO_PRICE_ID', 'price_xxxxx')
+                        # Get price ID from secrets
+                        price_id = st.secrets.get('STRIPE_PRO_PRICE_ID', '')
                         
-                        checkout_url = stripe_handler.create_checkout_session(
-                            username,
-                            user_email,
-                            price_id
-                        )
-                        
-                        if checkout_url:
-                            st.markdown(stripe_handler.get_checkout_button_html(checkout_url), unsafe_allow_html=True)
+                        if not price_id or price_id == 'price_xxxxx':
+                            st.error("Stripe Price ID not configured. Please contact support.")
+                            st.info("Admin: Add STRIPE_PRO_PRICE_ID to Streamlit secrets")
+                        else:
+                            checkout_url = stripe_handler.create_checkout_session(
+                                username,
+                                user_email,
+                                price_id
+                            )
+                            
+                            if checkout_url:
+                                st.markdown(stripe_handler.get_checkout_button_html(checkout_url), unsafe_allow_html=True)
+                                st.info("Click the button above to complete your subscription.")
                 else:
-                    st.warning("Payment processing is not configured yet.")
-                    st.info("To enable payments, configure Stripe in the admin panel or contact support@aidatachat.com")
+                    st.warning("Payment processing is currently in setup mode.")
+                    st.info("Contact support@aidatachat.com to upgrade to Pro")
+                    st.caption("Admin: Configure Stripe keys in Streamlit secrets to enable payments")
             else:
-                st.success("Current Plan")
+                st.success("✓ Current Plan")
     
     # Feature gates info
     st.markdown("---")
@@ -1439,9 +1446,9 @@ def subscription_interface():
             st.write(feature)
         with col_b:
             if has_access:
-                st.success("Enabled")
+                st.success("✓ Enabled")
             else:
-                st.error("Pro Only")
+                st.error("✗ Pro Only")
 
 
 def main():
