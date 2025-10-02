@@ -295,8 +295,12 @@ def data_filtering_interface():
 
 
 def create_visualizations(df):
-    """Create interactive visualizations with analytical guidance"""
+    """Create interactive visualizations with analytical guidance and performance optimization"""
     st.subheader("Interactive Visualizations")
+    
+    # Performance warning for large datasets
+    if len(df) > 10000:
+        st.warning(f"Large dataset detected ({len(df):,} rows). Some visualizations will use sampling for performance.")
     
     viz_type = st.selectbox(
         "Select visualization type:",
@@ -307,14 +311,26 @@ def create_visualizations(df):
     numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
     cat_cols = df.select_dtypes(include=['object', 'category']).columns.tolist()
     
+    # Limit columns for large datasets
+    max_cols_for_viz = 20
+    if len(numeric_cols) > max_cols_for_viz:
+        st.info(f"Dataset has {len(numeric_cols)} numeric columns. Selecting top {max_cols_for_viz} most variable for performance.")
+        variances = df[numeric_cols].var().sort_values(ascending=False)
+        numeric_cols = variances.head(max_cols_for_viz).index.tolist()
+    
     if viz_type == "Histogram":
         if numeric_cols:
             col = st.selectbox("Select column:", numeric_cols, key="hist_column")
             st.info(f"Showing distribution of {col}. Look for patterns, outliers, or skewness.")
-            fig = px.histogram(df, x=col, title=f"Distribution of {col}", nbins=50)
+            
+            # Sample for very large datasets
+            plot_df = df if len(df) <= 10000 else df.sample(10000)
+            if len(df) > 10000:
+                st.caption(f"Showing sample of 10,000 from {len(df):,} total rows")
+            
+            fig = px.histogram(plot_df, x=col, title=f"Distribution of {col}", nbins=50)
             st.plotly_chart(fig, use_container_width=True)
             
-            # Add basic statistics
             st.write(f"**Mean:** {df[col].mean():.2f} | **Median:** {df[col].median():.2f} | **Std:** {df[col].std():.2f}")
     
     elif viz_type == "Scatter Plot":
@@ -326,18 +342,24 @@ def create_visualizations(df):
             with col2:
                 y_col = st.selectbox("Y-axis:", [c for c in numeric_cols if c != x_col], key="scatter_y")
             
-            color_col = st.selectbox("Color by (optional):", ["None"] + cat_cols + numeric_cols, key="scatter_color")
+            # Limit color options for performance
+            color_options = ["None"] + cat_cols[:5] + numeric_cols[:5]
+            color_col = st.selectbox("Color by (optional):", color_options, key="scatter_color")
             color_col = None if color_col == "None" else color_col
             
-            # Calculate correlation
+            # Always sample scatter plots for performance
+            sample_size = min(5000, len(df))
+            plot_df = df.sample(sample_size) if len(df) > sample_size else df
+            if len(df) > sample_size:
+                st.caption(f"Showing sample of {sample_size:,} from {len(df):,} total rows")
+            
             correlation = df[[x_col, y_col]].corr().iloc[0, 1]
             
-            fig = px.scatter(df.sample(min(5000, len(df))), x=x_col, y=y_col, color=color_col, 
+            fig = px.scatter(plot_df, x=x_col, y=y_col, color=color_col, 
                            title=f"{x_col} vs {y_col} (Correlation: {correlation:.3f})",
                            opacity=0.6)
             st.plotly_chart(fig, use_container_width=True)
             
-            # Interpretation
             if abs(correlation) > 0.7:
                 st.success(f"Strong correlation detected ({correlation:.3f})")
             elif abs(correlation) > 0.4:
@@ -350,7 +372,6 @@ def create_visualizations(df):
             cat_col = st.selectbox("Category:", cat_cols, key="bar_category")
             num_col = st.selectbox("Value:", numeric_cols, key="bar_value")
             
-            # Intelligent default aggregation based on column name
             default_agg = "mean"
             if "count" in num_col.lower() or "total" in num_col.lower():
                 default_agg = "sum"
@@ -359,18 +380,20 @@ def create_visualizations(df):
             default_idx = agg_options.index(default_agg)
             agg_func = st.selectbox("Aggregation:", agg_options, index=default_idx, key="bar_agg")
             
-            # Warning for inappropriate aggregations
             if agg_func == "sum" and num_col.lower() in ["age", "bmi", "rating", "score", "hours", "sleep_hours", "sleep"]:
-                st.warning(f"💡 Note: Summing '{num_col}' may not be meaningful. Consider using 'mean' or 'median' instead.")
+                st.warning(f"Note: Summing '{num_col}' may not be meaningful. Consider using 'mean' or 'median' instead.")
             
+            # Limit categories for readability
             grouped = df.groupby(cat_col)[num_col].agg(agg_func).reset_index()
-            grouped = grouped.sort_values(num_col, ascending=False).head(20)
+            
+            if len(grouped) > 30:
+                st.info(f"Showing top 30 of {len(grouped)} categories")
+                grouped = grouped.sort_values(num_col, ascending=False).head(30)
             
             fig = px.bar(grouped, x=cat_col, y=num_col, 
                         title=f"{agg_func.title()} of {num_col} by {cat_col}")
             st.plotly_chart(fig, use_container_width=True)
             
-            # Show insight
             if agg_func in ["mean", "median"]:
                 max_cat = grouped.iloc[0][cat_col]
                 max_val = grouped.iloc[0][num_col]
@@ -380,42 +403,52 @@ def create_visualizations(df):
         if numeric_cols:
             st.info("Box plots show the distribution, median, quartiles, and outliers.")
             col = st.selectbox("Select column:", numeric_cols, key="box_column")
-            group_by = st.selectbox("Group by (optional):", ["None"] + cat_cols, key="box_group")
+            group_by = st.selectbox("Group by (optional):", ["None"] + cat_cols[:10], key="box_group")
+            
+            # Sample for large datasets
+            plot_df = df if len(df) <= 10000 else df.sample(10000)
+            if len(df) > 10000:
+                st.caption(f"Showing sample of 10,000 from {len(df):,} total rows")
             
             if group_by == "None":
-                fig = px.box(df, y=col, title=f"Box Plot of {col}")
+                fig = px.box(plot_df, y=col, title=f"Box Plot of {col}")
             else:
-                fig = px.box(df, x=group_by, y=col, title=f"Box Plot of {col} by {group_by}")
+                # Limit groups
+                top_groups = df[group_by].value_counts().head(15).index
+                plot_df = plot_df[plot_df[group_by].isin(top_groups)]
+                fig = px.box(plot_df, x=group_by, y=col, title=f"Box Plot of {col} by {group_by}")
             
             st.plotly_chart(fig, use_container_width=True)
             
-            # Show outlier count
             Q1 = df[col].quantile(0.25)
             Q3 = df[col].quantile(0.75)
             IQR = Q3 - Q1
             outliers = df[(df[col] < Q1 - 1.5 * IQR) | (df[col] > Q3 + 1.5 * IQR)]
             if len(outliers) > 0:
-                st.warning(f"⚠️ Detected {len(outliers)} outliers ({len(outliers)/len(df)*100:.1f}% of data)")
+                st.warning(f"Detected {len(outliers):,} outliers ({len(outliers)/len(df)*100:.1f}% of data)")
     
     elif viz_type == "Correlation Heatmap":
         if len(numeric_cols) >= 2:
             st.info("Darker colors indicate stronger correlations. Look for patterns and relationships.")
             
-            # Limit to reasonable number of columns
-            if len(numeric_cols) > 15:
-                st.warning("Too many columns for clear visualization. Showing top 15 most variable columns.")
+            # Limit columns for performance
+            max_corr_cols = 15
+            if len(numeric_cols) > max_corr_cols:
+                st.warning(f"Showing top {max_corr_cols} most variable columns for clarity.")
                 variances = df[numeric_cols].var().sort_values(ascending=False)
-                selected_cols = variances.head(15).index.tolist()
-                corr_matrix = df[selected_cols].corr()
+                selected_cols = variances.head(max_corr_cols).index.tolist()
             else:
-                corr_matrix = df[numeric_cols].corr()
+                selected_cols = numeric_cols
+            
+            # Sample if dataset is large
+            corr_df = df[selected_cols] if len(df) <= 20000 else df[selected_cols].sample(20000)
+            corr_matrix = corr_df.corr()
             
             fig = px.imshow(corr_matrix, text_auto=".2f", aspect="auto", 
                           title="Correlation Heatmap",
                           color_continuous_scale="RdBu_r", zmin=-1, zmax=1)
             st.plotly_chart(fig, use_container_width=True)
             
-            # Highlight strongest correlations
             corr_flat = corr_matrix.abs().unstack()
             corr_flat = corr_flat[corr_flat < 1].sort_values(ascending=False).head(3)
             if len(corr_flat) > 0:
@@ -428,16 +461,16 @@ def create_visualizations(df):
         if numeric_cols:
             st.info("Line charts work best for time series or sequential data.")
             y_col = st.selectbox("Y-axis:", numeric_cols, key="line_y")
-            x_col = st.selectbox("X-axis:", df.columns.tolist(), key="line_x")
+            x_col = st.selectbox("X-axis:", df.columns.tolist()[:20], key="line_x")
             
-            # Warning if X axis doesn't look sequential
             if df[x_col].dtype == 'object':
                 st.warning(f"'{x_col}' is categorical. Line charts work best with sequential/time data.")
             
-            # Limit data points for performance
-            if len(df) > 1000:
-                st.info(f"Sampling 1000 points for performance.")
-                plot_df = df.sample(min(1000, len(df))).sort_values(x_col)
+            # Limit and sort data
+            max_points = 1000
+            if len(df) > max_points:
+                st.info(f"Sampling {max_points} points for performance.")
+                plot_df = df.sample(max_points).sort_values(x_col)
             else:
                 plot_df = df.sort_values(x_col)
             
@@ -501,7 +534,7 @@ def display_data_overview():
     # Metrics
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        st.metric("Rows", len(df))
+        st.metric("Rows", f"{len(df):,}")
     with col2:
         st.metric("Columns", len(df.columns))
     with col3:
@@ -691,6 +724,7 @@ def main():
             st.write(f"**Name:** {st.session_state.file_info['name']}")
             st.write(f"**Format:** {st.session_state.file_info['format']}")
             st.write(f"**Size:** {st.session_state.file_info['size_mb']} MB")
+            st.write(f"**Rows:** {len(st.session_state.df):,}")
             
             st.markdown("---")
             data_filtering_interface()
