@@ -1,7 +1,7 @@
 """
 Subscription and Payment Management
 Handles Stripe integration and feature gates
-VERSION: 3.0 - Clean restart
+VERSION: 4.0 - FORCE RELOAD - Method renamed
 """
 from datetime import datetime, timedelta
 from typing import Dict
