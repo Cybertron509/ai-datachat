@@ -1206,44 +1206,16 @@ def chat_interface():
         st.warning("AI Chat is not available. Please check your OpenAI API configuration and ensure you have sufficient credits.")
         return
     
-    # Import fresh
-    import importlib
-    import sys
-    if 'src.utils.subscription' in sys.modules:
-        importlib.reload(sys.modules['src.utils.subscription'])
-    
     from src.utils.subscription import SubscriptionManager
     
     try:
         sub_manager = SubscriptionManager()
         username = st.session_state.username
         
-        # Debug: Check method signature
-        import inspect
-        sig = inspect.signature(sub_manager.get_remaining_ai_questions)
-        st.caption(f"Debug: Method signature: {sig}")
-        
-        # Get remaining questions with error handling
-        try:
-            # Explicitly call with ONLY username
-            remaining = sub_manager.get_remaining_ai_questions(username)
-            subscription = sub_manager.get_user_subscription(username)
-            tier = subscription.get('tier', 'free')
-        except TypeError as e:
-            st.error(f"TypeError calling get_remaining_ai_questions: {str(e)}")
-            st.info("Falling back to session-based tracking")
-            # Fallback to session-based limit
-            if 'chat_question_count' not in st.session_state:
-                st.session_state.chat_question_count = 0
-            remaining = max(0, 2 - st.session_state.chat_question_count)
-            tier = 'free'
-        except Exception as e:
-            st.error(f"Error loading subscription info: {str(e)}")
-            # Fallback to session-based limit
-            if 'chat_question_count' not in st.session_state:
-                st.session_state.chat_question_count = 0
-            remaining = max(0, 2 - st.session_state.chat_question_count)
-            tier = 'free'
+        # Use NEW method name
+        remaining = sub_manager.get_ai_questions_remaining(username)
+        subscription = sub_manager.get_user_subscription(username)
+        tier = subscription.get('tier', 'free')
         
         # Show remaining questions
         if tier == 'free':
@@ -1283,17 +1255,9 @@ def chat_interface():
                             st.write(response)
                             st.session_state.chat_history.append({"role": "assistant", "content": response})
                             
-                            # Try to increment in subscription file
-                            try:
-                                sub_manager.increment_ai_questions(username)
-                                new_remaining = sub_manager.get_remaining_ai_questions(username)
-                            except Exception as e:
-                                # Fallback to session tracking
-                                logger.warning(f"Could not persist question count: {str(e)}")
-                                if 'chat_question_count' not in st.session_state:
-                                    st.session_state.chat_question_count = 0
-                                st.session_state.chat_question_count += 1
-                                new_remaining = max(0, 2 - st.session_state.chat_question_count)
+                            # Increment and get new remaining
+                            sub_manager.increment_ai_questions(username)
+                            new_remaining = sub_manager.get_ai_questions_remaining(username)
                             
                             if new_remaining == 0 and tier == 'free':
                                 st.warning("⚠️ That was your last free question! Upgrade to Pro for unlimited AI chat.")
@@ -1308,15 +1272,7 @@ def chat_interface():
     
     except Exception as e:
         st.error(f"Error initializing chat: {str(e)}")
-        st.info("Using session-based question tracking as fallback")
-        if 'chat_question_count' not in st.session_state:
-            st.session_state.chat_question_count = 0
-        remaining = max(0, 2 - st.session_state.chat_question_count)
-        
-        if remaining > 0:
-            st.info(f"You have {remaining} questions remaining this session")
-        else:
-            st.error("You've used your 2 questions. Refresh the page for 2 more.")
+        st.info("Please try refreshing the page.")
 
 def subscription_interface():
     """Subscription and billing interface"""
@@ -1438,7 +1394,7 @@ def subscription_interface():
         
         ai_used = subscription.get('ai_questions_used', 0)
         ai_limit = sub_manager.TIERS['free']['limits']['ai_questions']
-        ai_remaining = ai_limit - ai_used
+        ai_remaining = sub_manager.get_ai_questions_remaining(username)
         
         progress_value = ai_used / ai_limit if ai_limit > 0 else 0
         

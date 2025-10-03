@@ -1,12 +1,15 @@
 """
 Subscription and Payment Management
 Handles Stripe integration and feature gates
+VERSION: 3.0 - Clean restart
 """
-import streamlit as st
 from datetime import datetime, timedelta
-from typing import Dict, Optional
+from typing import Dict
 import json
 from pathlib import Path
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class SubscriptionManager:
@@ -21,7 +24,7 @@ class SubscriptionManager:
                 'Basic visualizations',
                 'Statistical analysis',
                 'Data filtering and cleaning',
-                '2 AI chat questions per session'
+                '2 AI chat questions (lifetime)'
             ],
             'limits': {
                 'ai_questions': 2,
@@ -46,7 +49,7 @@ class SubscriptionManager:
                 'Larger file uploads (2GB)'
             ],
             'limits': {
-                'ai_questions': 999,
+                'ai_questions': 999999,
                 'forecasting': True,
                 'scenarios': True,
                 'trust_score': True,
@@ -62,14 +65,21 @@ class SubscriptionManager:
     
     def _ensure_file_exists(self):
         """Create subscriptions file if it doesn't exist"""
-        if not self.subscriptions_file.exists():
-            with open(self.subscriptions_file, 'w') as f:
-                json.dump({}, f)
+        try:
+            if not self.subscriptions_file.exists():
+                with open(self.subscriptions_file, 'w') as f:
+                    json.dump({}, f)
+        except Exception as e:
+            logger.warning(f"Could not create subscriptions file: {str(e)}")
     
     def get_user_subscription(self, username: str) -> Dict:
         """Get user's subscription details"""
-        with open(self.subscriptions_file, 'r') as f:
-            subscriptions = json.load(f)
+        try:
+            with open(self.subscriptions_file, 'r') as f:
+                subscriptions = json.load(f)
+        except Exception as e:
+            logger.warning(f"Could not read subscriptions file: {str(e)}")
+            subscriptions = {}
         
         user_sub = subscriptions.get(username, {
             'tier': 'free',
@@ -77,20 +87,38 @@ class SubscriptionManager:
             'started_at': datetime.now().isoformat(),
             'expires_at': None,
             'stripe_customer_id': None,
-            'stripe_subscription_id': None
+            'stripe_subscription_id': None,
+            'ai_questions_used': 0
         })
+        
+        if 'ai_questions_used' not in user_sub:
+            user_sub['ai_questions_used'] = 0
         
         return user_sub
     
     def update_subscription(self, username: str, subscription_data: Dict):
         """Update user subscription"""
-        with open(self.subscriptions_file, 'r') as f:
-            subscriptions = json.load(f)
+        try:
+            with open(self.subscriptions_file, 'r') as f:
+                subscriptions = json.load(f)
+        except Exception as e:
+            logger.warning(f"Could not read subscriptions file for update: {str(e)}")
+            subscriptions = {}
         
         subscriptions[username] = subscription_data
         
-        with open(self.subscriptions_file, 'w') as f:
-            json.dump(subscriptions, f, indent=2)
+        try:
+            with open(self.subscriptions_file, 'w') as f:
+                json.dump(subscriptions, f, indent=2)
+        except Exception as e:
+            logger.error(f"Could not write to subscriptions file: {str(e)}")
+            raise
+    
+    def increment_ai_questions(self, username: str):
+        """Increment AI questions used for user"""
+        subscription = self.get_user_subscription(username)
+        subscription['ai_questions_used'] = subscription.get('ai_questions_used', 0) + 1
+        self.update_subscription(username, subscription)
     
     def can_access_feature(self, username: str, feature: str) -> bool:
         """Check if user can access a feature"""
@@ -99,13 +127,14 @@ class SubscriptionManager:
         
         return self.TIERS[tier]['limits'].get(feature, False)
     
-    def get_remaining_ai_questions(self, username: str, current_session_count: int) -> int:
-        """Get remaining AI questions for user"""
+    def get_ai_questions_remaining(self, username: str) -> int:
+        """Get remaining AI questions for user - NEW METHOD NAME"""
         subscription = self.get_user_subscription(username)
         tier = subscription.get('tier', 'free')
         limit = self.TIERS[tier]['limits']['ai_questions']
+        used = subscription.get('ai_questions_used', 0)
         
-        return max(0, limit - current_session_count)
+        return max(0, limit - used)
     
     def upgrade_to_pro(self, username: str, stripe_customer_id: str, stripe_subscription_id: str):
         """Upgrade user to pro tier"""
@@ -116,5 +145,6 @@ class SubscriptionManager:
         subscription['expires_at'] = (datetime.now() + timedelta(days=30)).isoformat()
         subscription['stripe_customer_id'] = stripe_customer_id
         subscription['stripe_subscription_id'] = stripe_subscription_id
+        subscription['ai_questions_used'] = 0
         
         self.update_subscription(username, subscription)
