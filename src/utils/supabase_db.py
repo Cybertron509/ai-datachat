@@ -1,46 +1,40 @@
 """
-Supabase database connection
+Supabase database connection utilities
 """
-from supabase import create_client, Client
-import streamlit as st
 import os
-import logging
-
-logger = logging.getLogger(__name__)
+import streamlit as st
+from supabase import create_client, Client
+from typing import Optional
 
 
 class SupabaseDB:
-    """Supabase database manager"""
+    """Singleton class for Supabase database connection"""
     
-    def __init__(self):
-        """Initialize Supabase client"""
-        try:
-           url = os.getenv("SUPABASE_URL") or st.secrets.get("SUPABASE_URL", "")
-           key = os.getenv("SUPABASE_KEY") or st.secrets.get("SUPABASE_KEY", "")
-            
-            if not url or not key:
-                logger.error("Supabase credentials not found")
-                self.client = None
-                return
-            
-            self.client: Client = create_client(url, key)
-            logger.info("Successfully connected to Supabase")
-            
-        except Exception as e:
-            logger.error(f"Supabase connection error: {e}")
-            self.client = None
+    _instance: Optional[Client] = None
     
-    def is_connected(self):
-        """Check if connected"""
-        return self.client is not None
+    @classmethod
+    def get_client(cls) -> Optional[Client]:
+        """Get or create Supabase client"""
+        if cls._instance is None:
+            try:
+                # Check environment variables first (for Render), then Streamlit secrets (for Streamlit Cloud)
+                url = os.getenv("SUPABASE_URL") or st.secrets.get("SUPABASE_URL", "")
+                key = os.getenv("SUPABASE_KEY") or st.secrets.get("SUPABASE_KEY", "")
+                
+                if not url or not key:
+                    print("ERROR: Supabase credentials not found in environment variables or secrets")
+                    return None
+                
+                cls._instance = create_client(url, key)
+                print("Successfully connected to Supabase")
+                
+            except Exception as e:
+                print(f"Supabase connection error: {str(e)}")
+                return None
+        
+        return cls._instance
 
 
-# Singleton instance
-_db_instance = None
-
-def get_db():
-    """Get or create Supabase instance"""
-    global _db_instance
-    if _db_instance is None:
-        _db_instance = SupabaseDB()
-    return _db_instance
+def get_db() -> Optional[Client]:
+    """Get Supabase client instance"""
+    return SupabaseDB.get_client()
