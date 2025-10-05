@@ -1,19 +1,17 @@
 """
-Subscription and Payment Management
-Handles Stripe integration and feature gates
-VERSION: 4.0 - FORCE RELOAD - Method renamed
+Subscription management with Supabase
+VERSION: 5.0 - Supabase integration
 """
 from datetime import datetime, timedelta
 from typing import Dict
-import json
-from pathlib import Path
 import logging
+from .supabase_db import get_db
 
 logger = logging.getLogger(__name__)
 
 
 class SubscriptionManager:
-    """Manage user subscriptions and feature access"""
+    """Manage user subscriptions with Supabase"""
     
     TIERS = {
         'free': {
@@ -60,91 +58,123 @@ class SubscriptionManager:
     }
     
     def __init__(self):
-        self.subscriptions_file = Path('subscriptions.json')
-        self._ensure_file_exists()
-    
-    def _ensure_file_exists(self):
-        """Create subscriptions file if it doesn't exist"""
-        try:
-            if not self.subscriptions_file.exists():
-                with open(self.subscriptions_file, 'w') as f:
-                    json.dump({}, f)
-        except Exception as e:
-            logger.warning(f"Could not create subscriptions file: {str(e)}")
+        self.db = get_db()
     
     def get_user_subscription(self, username: str) -> Dict:
-        """Get user's subscription details"""
-        try:
-            with open(self.subscriptions_file, 'r') as f:
-                subscriptions = json.load(f)
-        except Exception as e:
-            logger.warning(f"Could not read subscriptions file: {str(e)}")
-            subscriptions = {}
-        
-        user_sub = subscriptions.get(username, {
-            'tier': 'free',
-            'status': 'active',
-            'started_at': datetime.now().isoformat(),
-            'expires_at': None,
-            'stripe_customer_id': None,
-            'stripe_subscription_id': None,
-            'ai_questions_used': 0
-        })
-        
-        if 'ai_questions_used' not in user_sub:
-            user_sub['ai_questions_used'] = 0
-        
-        return user_sub
-    
-    def update_subscription(self, username: str, subscription_data: Dict):
-        """Update user subscription"""
-        try:
-            with open(self.subscriptions_file, 'r') as f:
-                subscriptions = json.load(f)
-        except Exception as e:
-            logger.warning(f"Could not read subscriptions file for update: {str(e)}")
-            subscriptions = {}
-        
-        subscriptions[username] = subscription_data
+        """Get user subscription from Supabase"""
+        if not self.db.is_connected():
+            logger.warning("Database not connected, returning default subscription")
+            return {'tier': 'free', 'status': 'active', 'ai_questions_used': 0}
         
         try:
-            with open(self.subscriptions_file, 'w') as f:
-                json.dump(subscriptions, f, indent=2)
+            # Get user first
+            user_response = self.db.client.table('users').select('id').eq('username', username).execute()
+            
+            if not user_response.data:
+                logger.warning(f"User not found: {username}")
+                return {'tier': 'free', 'status': 'active', 'ai_questions_used': 0}
+            
+            user_id = user_response.data[0]['id']
+            
+            # Get subscription
+            sub_response = self.db.client.table('subscriptions').select('*').eq('user_id', user_id).execute()
+            
+            if sub_response.data:
+                sub = sub_response.data[0]
+                return {
+                    'user_id': sub['user_id'],
+                    'tier': sub['tier'],
+                    'status': sub['status'],
+                    'ai_questions_used': sub['ai_questions_used'],
+                    'stripe_customer_id': sub.get('stripe_customer_id'),
+                    'stripe_subscription_id': sub.get('stripe_subscription_id'),
+                    'started_at': sub.get('started_at'),
+                    'expires_at': sub.get('expires_at')
+                }
+            
+            return {'tier': 'free', 'status': 'active', 'ai_questions_used': 0}
+            
         except Exception as e:
-            logger.error(f"Could not write to subscriptions file: {str(e)}")
-            raise
+            logger.error(f"Get subscription error: {e}")
+            return {'tier': 'free', 'status': 'active', 'ai_questions_used': 0}
     
     def increment_ai_questions(self, username: str):
-        """Increment AI questions used for user"""
-        subscription = self.get_user_subscription(username)
-        subscription['ai_questions_used'] = subscription.get('ai_questions_used', 0) + 1
-        self.update_subscription(username, subscription)
-    
-    def can_access_feature(self, username: str, feature: str) -> bool:
-        """Check if user can access a feature"""
-        subscription = self.get_user_subscription(username)
-        tier = subscription.get('tier', 'free')
+        """Increment AI questions count"""
+        if not self.db.is_connected():
+            logger.warning("Database not connected, cannot increment AI questions")
+            return
         
-        return self.TIERS[tier]['limits'].get(feature, False)
+        try:
+            # Get user ID
+            user_response = self.db.client.table('users').select('id').eq('username', username).execute()
+            
+            if not user_response.data:
+                logger.warning(f"User not found: {username}")
+                return
+            
+            user_id = user_response.data[0]['id']
+            
+            # Get current count
+            sub_response = self.db.client.table('subscriptions').select('ai_questions_used').eq('user_id', user_id).execute()
+            
+            if not sub_response.data:
+                logger.warning(f"Subscription not found for user: {username}")
+                return
+            
+            current_count = sub_response.data[0]['ai_questions_used']
+            
+            # Increment
+            self.db.client.table('subscriptions').update({
+                'ai_questions_used': current_count + 1
+            }).eq('user_id', user_id).execute()
+            
+            logger.info(f"Incremented AI questions for {username}: {current_count} -> {current_count + 1}")
+            
+        except Exception as e:
+            logger.error(f"Increment AI questions error: {e}")
     
     def get_ai_questions_remaining(self, username: str) -> int:
-        """Get remaining AI questions for user - NEW METHOD NAME"""
+        """Get remaining AI questions"""
         subscription = self.get_user_subscription(username)
         tier = subscription.get('tier', 'free')
         limit = self.TIERS[tier]['limits']['ai_questions']
         used = subscription.get('ai_questions_used', 0)
-        
         return max(0, limit - used)
     
-    def upgrade_to_pro(self, username: str, stripe_customer_id: str, stripe_subscription_id: str):
-        """Upgrade user to pro tier"""
+    def can_access_feature(self, username: str, feature: str) -> bool:
+        """Check if user can access feature"""
         subscription = self.get_user_subscription(username)
-        subscription['tier'] = 'pro'
-        subscription['status'] = 'active'
-        subscription['started_at'] = datetime.now().isoformat()
-        subscription['expires_at'] = (datetime.now() + timedelta(days=30)).isoformat()
-        subscription['stripe_customer_id'] = stripe_customer_id
-        subscription['stripe_subscription_id'] = stripe_subscription_id
-        subscription['ai_questions_used'] = 0
+        tier = subscription.get('tier', 'free')
+        return self.TIERS[tier]['limits'].get(feature, False)
+    
+    def upgrade_to_pro(self, username: str, stripe_customer_id: str, stripe_subscription_id: str):
+        """Upgrade user to Pro tier"""
+        if not self.db.is_connected():
+            logger.error("Database not connected, cannot upgrade user")
+            return
         
-        self.update_subscription(username, subscription)
+        try:
+            # Get user ID
+            user_response = self.db.client.table('users').select('id').eq('username', username).execute()
+            
+            if not user_response.data:
+                logger.error(f"User not found: {username}")
+                return
+            
+            user_id = user_response.data[0]['id']
+            
+            # Update subscription
+            self.db.client.table('subscriptions').update({
+                'tier': 'pro',
+                'status': 'active',
+                'stripe_customer_id': stripe_customer_id,
+                'stripe_subscription_id': stripe_subscription_id,
+                'started_at': datetime.now().isoformat(),
+                'expires_at': (datetime.now() + timedelta(days=30)).isoformat(),
+                'ai_questions_used': 0
+            }).eq('user_id', user_id).execute()
+            
+            logger.info(f"Upgraded user to Pro: {username}")
+            
+        except Exception as e:
+            logger.error(f"Upgrade to pro error: {e}")
