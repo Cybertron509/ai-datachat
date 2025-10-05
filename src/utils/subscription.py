@@ -62,7 +62,7 @@ class SubscriptionManager:
     
     def get_user_subscription(self, username: str) -> Dict:
         """Get user subscription from Supabase"""
-        if not self.db.is_connected():
+        if not self.db:
             logger.warning("Database not connected, returning default subscription")
             return {'tier': 'free', 'status': 'active', 'ai_questions_used': 0}
         
