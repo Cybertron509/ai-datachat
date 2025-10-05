@@ -115,6 +115,8 @@ class AuthManager:
         st.session_state['authenticated'] = False
         st.session_state['user'] = None
         st.session_state['username'] = None
+        if 'user_info' in st.session_state:
+            del st.session_state['user_info']
     
     def is_authenticated(self) -> bool:
         """Check if user is authenticated"""
@@ -123,3 +125,28 @@ class AuthManager:
     def get_current_user(self):
         """Get current authenticated user"""
         return st.session_state.get('user', None)
+    
+    def get_user_info(self, username: str) -> dict:
+        """Get user information by username"""
+        if not self.db:
+            logger.error("Database not connected")
+            return {}
+        
+        try:
+            result = self.db.table('users').select('*').eq('username', username).execute()
+            
+            if result.data and len(result.data) > 0:
+                user = result.data[0]
+                return {
+                    'username': user.get('username', ''),
+                    'name': user.get('full_name', ''),
+                    'email': user.get('email', ''),
+                    'full_name': user.get('full_name', ''),
+                    'id': user.get('id', '')
+                }
+            
+            return {}
+            
+        except Exception as e:
+            logger.error(f"Error getting user info: {str(e)}")
+            return {}
