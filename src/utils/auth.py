@@ -105,7 +105,7 @@ class AuthManager:
     
     def get_user_info(self, username: str) -> dict:
         """Get user information"""
-        if not self.db.is_connected():
+        if not self.db:
             return {}
         
         try:
