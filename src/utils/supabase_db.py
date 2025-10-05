@@ -15,8 +15,8 @@ class SupabaseDB:
     def __init__(self):
         """Initialize Supabase client"""
         try:
-            url = st.secrets.get("SUPABASE_URL", os.getenv("SUPABASE_URL"))
-            key = st.secrets.get("SUPABASE_KEY", os.getenv("SUPABASE_KEY"))
+           url = os.getenv("SUPABASE_URL") or st.secrets.get("SUPABASE_URL", "")
+           key = os.getenv("SUPABASE_KEY") or st.secrets.get("SUPABASE_KEY", "")
             
             if not url or not key:
                 logger.error("Supabase credentials not found")
