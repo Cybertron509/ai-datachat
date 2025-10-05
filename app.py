@@ -1340,7 +1340,7 @@ def subscription_interface():
             
             if current_tier == 'free':
                 if stripe_handler.is_configured():
-                    user_email = st.session_state.user_info.get('email', '')
+                    user_email = st.session_state.get('user_info', {}).get('email', '')
                     
                     if not user_email:
                         user_email = st.text_input("Email for billing:", key="billing_email")
@@ -1439,7 +1439,7 @@ def main():
     </style>
     """, unsafe_allow_html=True)
     
-    user_name = st.session_state.user_info.get("name", st.session_state.username)
+    user_name = st.session_state.get('user_info', {}).get("name", st.session_state.get('username', 'User'))
     st.markdown(f'<p class="user-info">Logged in as: <strong>{user_name}</strong></p>', unsafe_allow_html=True)
     
     st.markdown('<h1 class="main-header">AI DataChat</h1>', unsafe_allow_html=True)
