@@ -67,8 +67,7 @@ class SubscriptionManager:
             return {'tier': 'free', 'status': 'active', 'ai_questions_used': 0}
         
         try:
-            # Get user first
-            user_response = self.db.client.table('users').select('id').eq('username', username).execute()
+            user_response = self.db.table('users').select('id').eq('username', username).execute()
             
             if not user_response.data:
                 logger.warning(f"User not found: {username}")
@@ -76,8 +75,7 @@ class SubscriptionManager:
             
             user_id = user_response.data[0]['id']
             
-            # Get subscription
-            sub_response = self.db.client.table('subscriptions').select('*').eq('user_id', user_id).execute()
+            sub_response = self.db.table('subscriptions').select('*').eq('user_id', user_id).execute()
             
             if sub_response.data:
                 sub = sub_response.data[0]
@@ -100,13 +98,12 @@ class SubscriptionManager:
     
     def increment_ai_questions(self, username: str):
         """Increment AI questions count"""
-        if not self.db.is_connected():
+        if not self.db:
             logger.warning("Database not connected, cannot increment AI questions")
             return
         
         try:
-            # Get user ID
-            user_response = self.db.client.table('users').select('id').eq('username', username).execute()
+            user_response = self.db.table('users').select('id').eq('username', username).execute()
             
             if not user_response.data:
                 logger.warning(f"User not found: {username}")
@@ -114,8 +111,7 @@ class SubscriptionManager:
             
             user_id = user_response.data[0]['id']
             
-            # Get current count
-            sub_response = self.db.client.table('subscriptions').select('ai_questions_used').eq('user_id', user_id).execute()
+            sub_response = self.db.table('subscriptions').select('ai_questions_used').eq('user_id', user_id).execute()
             
             if not sub_response.data:
                 logger.warning(f"Subscription not found for user: {username}")
@@ -123,8 +119,7 @@ class SubscriptionManager:
             
             current_count = sub_response.data[0]['ai_questions_used']
             
-            # Increment
-            self.db.client.table('subscriptions').update({
+            self.db.table('subscriptions').update({
                 'ai_questions_used': current_count + 1
             }).eq('user_id', user_id).execute()
             
@@ -149,13 +144,12 @@ class SubscriptionManager:
     
     def upgrade_to_pro(self, username: str, stripe_customer_id: str, stripe_subscription_id: str):
         """Upgrade user to Pro tier"""
-        if not self.db.is_connected():
+        if not self.db:
             logger.error("Database not connected, cannot upgrade user")
             return
         
         try:
-            # Get user ID
-            user_response = self.db.client.table('users').select('id').eq('username', username).execute()
+            user_response = self.db.table('users').select('id').eq('username', username).execute()
             
             if not user_response.data:
                 logger.error(f"User not found: {username}")
@@ -163,8 +157,7 @@ class SubscriptionManager:
             
             user_id = user_response.data[0]['id']
             
-            # Update subscription
-            self.db.client.table('subscriptions').update({
+            self.db.table('subscriptions').update({
                 'tier': 'pro',
                 'status': 'active',
                 'stripe_customer_id': stripe_customer_id,
