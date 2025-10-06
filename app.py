@@ -1285,18 +1285,14 @@ def subscription_interface():
         st.warning("Please log in to manage subscriptions")
         return
     
-    # Initialize managers
     sub_manager = SubscriptionManager()
     stripe_handler = StripeHandler()
     
-    # Get current subscription
     subscription = sub_manager.get_user_subscription(username)
     current_tier = subscription.get('tier', 'free')
     
-    # Display current plan
     st.markdown(f"**Current Plan:** {sub_manager.TIERS[current_tier]['name']}")
     
-    # AI Questions remaining (only for free tier)
     if current_tier == 'free':
         remaining = sub_manager.get_ai_questions_remaining(username)
         st.progress(remaining / 2)
@@ -1304,7 +1300,6 @@ def subscription_interface():
     
     st.markdown("---")
     
-    # Display tier comparison
     col_free, col_pro = st.columns(2)
     
     with col_free:
@@ -1338,7 +1333,7 @@ def subscription_interface():
                     
                     if not price_id or price_id == 'price_xxxxx':
                         st.error("Stripe Price ID not configured. Please contact support.")
-                        st.info("Admin: Add STRIPE_PRO_PRICE_ID to Streamlit secrets")
+                        st.info("Admin: Add STRIPE_PRO_PRICE_ID to environment variables")
                     else:
                         checkout_url = stripe_handler.create_checkout_session(
                             username,
@@ -1352,64 +1347,9 @@ def subscription_interface():
             else:
                 st.warning("Payment processing is currently in setup mode.")
                 st.info("Contact support@aidatachat.com to upgrade to Pro")
-                st.caption("Admin: Configure Stripe keys in Streamlit secrets to enable payments")
+                st.caption("Admin: Configure Stripe keys to enable payments")
         else:
             st.success("✓ Current Plan")
-    
-    st.markdown("---")
-    st.subheader("Feature Access")
-    
-    if current_tier == 'free' or st.session_state.get('show_pricing', False):
-        st.subheader("Compare Plans")
-        
-        col_free, col_pro = st.columns(2)
-        
-        with col_free:
-            st.write("### Free")
-            st.write("**$0/month**")
-            st.write("")
-            for feature in sub_manager.TIERS['free']['features']:
-                st.write(f"✓ {feature}")
-            st.write("")
-            st.caption("Perfect for getting started")
-        
-        with col_pro:
-            st.write("### Pro")
-            st.write("**$24.99/month**")
-            st.write("")
-            for feature in sub_manager.TIERS['pro']['features']:
-                st.write(f"✓ {feature}")
-            st.write("")
-            
-            if current_tier == 'free':
-                if stripe_handler.is_configured():
-                    user_email = st.session_state.get('user_info', {}).get('email', '')
-                    
-                    if not user_email:
-                        user_email = st.text_input("Email for billing:", key="billing_email")
-                    
-                    if user_email and st.button("Subscribe Now", key="subscribe_pro_button", type="primary"):
-                       price_id = os.getenv('STRIPE_PRO_PRICE_ID', '')
-                        
-                    if not price_id or price_id == 'price_xxxxx':
-                            st.error("Stripe Price ID not configured. Please contact support.")
-                            st.info("Admin: Add STRIPE_PRO_PRICE_ID to Streamlit secrets")
-                    else:
-                        checkout_url = stripe_handler.create_checkout_session(
-                           username,
-                           user_email,
-                           price_id
-                            )
-                            
-                            if checkout_url:
-                                st.markdown(stripe_handler.get_checkout_button_html(checkout_url), unsafe_allow_html=True)
-                                st.info("Click the button above to complete your subscription.")
-                else:
-                    st.warning("Payment processing is currently in setup mode.")
-                    st.info("Contact support@aidatachat.com to upgrade to Pro")
-                    st.caption("Admin: Configure Stripe keys in Streamlit secrets to enable payments")
-            else:
-                st.success("✓ Current Plan")
     
     st.markdown("---")
     st.subheader("Feature Access")
@@ -1451,6 +1391,7 @@ def subscription_interface():
 
 
 def main():
+    # ... rest of the code stays the same
     """Main application"""
     initialize_session_state()
     
