@@ -38,6 +38,104 @@ from config import settings
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+def apply_custom_styles():
+    """Apply enhanced UI styling"""
+    st.markdown("""
+    <style>
+        #MainMenu {visibility: hidden;}
+        footer {visibility: hidden;}
+        
+        .main-header {
+            font-size: 3rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #1f77b4 0%, #2c3e50 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-align: center;
+            margin-bottom: 0.5rem;
+        }
+        
+        .tagline {
+            font-size: 1.3rem;
+            color: #7f8c8d;
+            text-align: center;
+            margin-bottom: 2rem;
+            font-weight: 300;
+        }
+        
+        .stButton > button {
+            border-radius: 12px;
+            font-weight: 600;
+            padding: 0.75rem 2rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .stButton > button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+        }
+        
+        .stTabs [data-baseweb="tab-list"] {
+            gap: 8px;
+            background-color: #f8f9fa;
+            padding: 0.5rem;
+            border-radius: 12px;
+        }
+        
+        .stTabs [data-baseweb="tab"] {
+            height: 50px;
+            border-radius: 8px;
+            font-weight: 600;
+        }
+        
+        .stTabs [aria-selected="true"] {
+            background: linear-gradient(135deg, #1f77b4 0%, #2c3e50 100%);
+            color: white;
+        }
+        
+        .pro-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            margin-left: 0.5rem;
+        }
+        
+        .feature-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            transition: all 0.3s ease;
+            margin-bottom: 1rem;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+        }
+        
+        .user-info {
+            text-align: right;
+            padding: 0.75rem 1rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 12px;
+            margin-bottom: 1rem;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+        
+        [data-testid="stMetricValue"] {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1f77b4;
+        }
+    </style>
+    """, unsafe_allow_html=True)
 
 def initialize_session_state():
     """Initialize session state variables"""
@@ -1395,7 +1493,7 @@ def subscription_interface():
 
 
 def main():
-    """Main application"""
+    apply_custom_styles()  # Add this line
     initialize_session_state()
     
     if not st.session_state.authenticated:
