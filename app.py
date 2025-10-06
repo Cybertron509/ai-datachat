@@ -20,6 +20,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 from io import BytesIO
 from datetime import datetime
+import os
 
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
@@ -1346,7 +1347,7 @@ def subscription_interface():
                         user_email = st.text_input("Email for billing:", key="billing_email")
                     
                     if user_email and st.button("Subscribe Now", key="subscribe_pro_button", type="primary"):
-                        price_id = st.secrets.get('STRIPE_PRO_PRICE_ID', '')
+                       price_id = os.getenv('STRIPE_PRO_PRICE_ID', '')
                         
                         if not price_id or price_id == 'price_xxxxx':
                             st.error("Stripe Price ID not configured. Please contact support.")
