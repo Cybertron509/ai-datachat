@@ -1349,7 +1349,7 @@ def subscription_interface():
                     if user_email and st.button("Subscribe Now", key="subscribe_pro_button", type="primary"):
                        price_id = os.getenv('STRIPE_PRO_PRICE_ID', '')
                         
-                        if not price_id or price_id == 'price_xxxxx':
+                    if not price_id or price_id == 'price_xxxxx':
                             st.error("Stripe Price ID not configured. Please contact support.")
                             st.info("Admin: Add STRIPE_PRO_PRICE_ID to Streamlit secrets")
                         else:
