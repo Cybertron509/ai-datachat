@@ -1,5 +1,6 @@
 """
 AI DataChat - Complete Application with Subscriptions and Monetization
+Fixed version with all bugs resolved
 """
 import streamlit as st
 
@@ -191,7 +192,7 @@ def load_data_file(uploaded_file):
 
 
 def clean_data_interface():
-    """Data cleaning interface"""
+    """Improved data cleaning interface with better error handling"""
     st.subheader("Data Cleaning")
     
     if st.session_state.df is None:
@@ -208,50 +209,52 @@ def clean_data_interface():
         )
         
         if st.button("Apply Missing Value Treatment", key="apply_missing_button"):
-            df = st.session_state.df_filtered.copy()
+            work = st.session_state.df_filtered.copy()
+            numeric_cols = work.select_dtypes(include=[np.number]).columns.tolist()
             
             if missing_action == "Drop rows with any missing":
-                df = df.dropna()
+                work = work.dropna()
             elif missing_action == "Drop rows with all missing":
-                df = df.dropna(how='all')
+                work = work.dropna(how='all')
             elif missing_action == "Fill with mean":
-                numeric_cols = df.select_dtypes(include=[np.number]).columns
-                df[numeric_cols] = df[numeric_cols].fillna(df[numeric_cols].mean())
+                for c in numeric_cols:
+                    work[c] = work[c].fillna(work[c].mean())
             elif missing_action == "Fill with median":
-                numeric_cols = df.select_dtypes(include=[np.number]).columns
-                df[numeric_cols] = df[numeric_cols].fillna(df[numeric_cols].median())
+                for c in numeric_cols:
+                    work[c] = work[c].fillna(work[c].median())
             elif missing_action == "Fill with mode":
-                for col in df.columns:
-                    if not df[col].mode().empty:
-                        df[col] = df[col].fillna(df[col].mode()[0])
+                for c in work.columns:
+                    mode = work[c].mode(dropna=True)
+                    if not mode.empty:
+                        work[c] = work[c].fillna(mode.iloc[0])
             
-            st.session_state.df_filtered = df
+            st.session_state.df_filtered = work
             st.success(f"Applied: {missing_action}")
             st.rerun()
     
     with col2:
-        st.write("**Handle Outliers**")
+        st.write("**Handle Outliers (Z-Score)**")
         numeric_cols = st.session_state.df_filtered.select_dtypes(include=[np.number]).columns.tolist()
         
         if numeric_cols:
             outlier_col = st.selectbox("Select column:", numeric_cols, key="outlier_column_selector")
-            outlier_method = st.selectbox("Method:", ["IQR", "Z-Score"], key="outlier_method_selector")
             
-            if st.button("Remove Outliers", key="remove_outliers_button"):
-                df = st.session_state.df_filtered.copy()
+            if st.button("Remove Outliers (|z|>3)", key="remove_outliers_button"):
+                work = st.session_state.df_filtered.copy()
                 
-                if outlier_method == "IQR":
-                    Q1 = df[outlier_col].quantile(0.25)
-                    Q3 = df[outlier_col].quantile(0.75)
-                    IQR = Q3 - Q1
-                    df = df[(df[outlier_col] >= Q1 - 1.5 * IQR) & (df[outlier_col] <= Q3 + 1.5 * IQR)]
+                std = work[outlier_col].std()
+                if std == 0 or np.isnan(std):
+                    st.warning(f"No variability in '{outlier_col}' — no outliers to remove.")
                 else:
-                    z_scores = np.abs((df[outlier_col] - df[outlier_col].mean()) / df[outlier_col].std())
-                    df = df[z_scores < 3]
-                
-                st.session_state.df_filtered = df
-                st.success(f"Removed outliers from {outlier_col}")
-                st.rerun()
+                    z = np.abs((work[outlier_col] - work[outlier_col].mean()) / std)
+                    z = np.nan_to_num(z, nan=0.0, posinf=0.0, neginf=0.0)
+                    before_count = len(work)
+                    work = work[z < 3]
+                    removed_count = before_count - len(work)
+                    
+                    st.session_state.df_filtered = work
+                    st.success(f"Removed {removed_count} outliers from {outlier_col}")
+                    st.rerun()
 
 
 def data_filtering_interface():
@@ -263,7 +266,6 @@ def data_filtering_interface():
     
     df = st.session_state.df.copy()
     
-    # Column selection
     all_columns = df.columns.tolist()
     selected_columns = st.multiselect(
         "Select columns to display:", 
@@ -272,7 +274,6 @@ def data_filtering_interface():
         key="column_filter_selector"
     )
     
-    # Numeric filters
     numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
     if numeric_cols:
         with st.expander("Numeric Filters"):
@@ -285,7 +286,6 @@ def data_filtering_interface():
                 )
                 df = df[(df[col] >= selected_range[0]) & (df[col] <= selected_range[1])]
     
-    # Categorical filters
     cat_cols = df.select_dtypes(include=['object', 'category']).columns.tolist()
     if cat_cols:
         with st.expander("Categorical Filters"):
@@ -1215,24 +1215,24 @@ def chat_interface():
         sub_manager = SubscriptionManager()
         username = st.session_state.username
         
-        # Use NEW method name
-        remaining = sub_manager.get_ai_questions_remaining(username)
+        # Get remaining AI questions - FIXED METHOD NAME
+        remaining = sub_manager.get_remaining_ai_questions(username)
         subscription = sub_manager.get_user_subscription(username)
         tier = subscription.get('tier', 'free')
         
         # Show remaining questions
         if tier == 'free':
             if remaining > 0:
-                st.info(f"🎁 You have {remaining} free AI question{'s' if remaining != 1 else ''} remaining (lifetime)")
+                st.info(f"You have {remaining} free AI question{'s' if remaining != 1 else ''} remaining (lifetime)")
             else:
-                st.error("❌ You've used all your free AI questions (2 lifetime limit)")
+                st.error("You've used all your free AI questions (2 lifetime limit)")
                 st.warning("Upgrade to Pro for unlimited AI chat!")
                 if st.button("Upgrade to Pro", key="upgrade_chat", type="primary"):
                     st.session_state.show_pricing = True
                     st.rerun()
                 return
         else:
-            st.success("✓ Pro Plan - Unlimited AI questions")
+            st.success("Pro Plan - Unlimited AI questions")
         
         # Display chat history
         for message in st.session_state.chat_history:
@@ -1258,13 +1258,12 @@ def chat_interface():
                             st.write(response)
                             st.session_state.chat_history.append({"role": "assistant", "content": response})
                             
-                            # Increment and get new remaining
+                            # Increment and get new remaining count - FIXED METHOD NAME
                             sub_manager.increment_ai_questions(username)
-                            new_remaining = sub_manager.get_ai_questions_remaining(username)
+                            new_remaining = sub_manager.get_remaining_ai_questions(username)
                             
                             if new_remaining == 0 and tier == 'free':
-                                st.warning("⚠️ That was your last free question! Upgrade to Pro for unlimited AI chat.")
-                                st.balloons()
+                                st.warning("That was your last free question! Upgrade to Pro for unlimited AI chat.")
                             
                             st.rerun()
                             
@@ -1277,9 +1276,10 @@ def chat_interface():
         st.error(f"Error initializing chat: {str(e)}")
         st.info("Please try refreshing the page.")
 
+
 def subscription_interface():
     """Display subscription management interface"""
-    st.subheader("💳 Subscription Management")
+    st.subheader("Subscription Management")
     
     username = st.session_state.get('username', '')
     
@@ -1296,7 +1296,8 @@ def subscription_interface():
     st.markdown(f"**Current Plan:** {sub_manager.TIERS[current_tier]['name']}")
     
     if current_tier == 'free':
-        remaining = sub_manager.get_ai_questions_remaining(username)
+        # FIXED METHOD NAME
+        remaining = sub_manager.get_remaining_ai_questions(username)
         st.progress(remaining / 2)
         st.caption(f"AI Questions: {remaining}/2 remaining")
     
@@ -1309,10 +1310,10 @@ def subscription_interface():
         st.write("**$0/month**")
         st.write("")
         for feature in sub_manager.TIERS['free']['features']:
-            st.write(f"✓ {feature}")
+            st.write(f"{feature}")
         st.write("")
         if current_tier == 'free':
-            st.success("✓ Current Plan")
+            st.success("Current Plan")
         st.caption("Perfect for getting started")
     
     with col_pro:
@@ -1320,7 +1321,7 @@ def subscription_interface():
         st.write("**$24.99/month**")
         st.write("")
         for feature in sub_manager.TIERS['pro']['features']:
-            st.write(f"✓ {feature}")
+            st.write(f"{feature}")
         st.write("")
         
         if current_tier == 'free':
@@ -1348,10 +1349,10 @@ def subscription_interface():
                             st.info("Click the button above to complete your subscription.")
             else:
                 st.warning("Payment processing is currently in setup mode.")
-                st.info("Contact support@aidatachat.com to upgrade to Pro")
+                st.info("Contact support to upgrade to Pro")
                 st.caption("Admin: Configure Stripe keys to enable payments")
         else:
-            st.success("✓ Current Plan")
+            st.success("Current Plan")
     
     st.markdown("---")
     st.subheader("Feature Access")
@@ -1369,9 +1370,9 @@ def subscription_interface():
             st.write(feature)
         with col_b:
             if has_access:
-                st.success("✓ Enabled")
+                st.success("Enabled")
             else:
-                st.error("✗ Pro Only")
+                st.error("Pro Only")
     
     if current_tier == 'free':
         st.markdown("---")
@@ -1379,7 +1380,8 @@ def subscription_interface():
         
         ai_used = subscription.get('ai_questions_used', 0)
         ai_limit = sub_manager.TIERS['free']['limits']['ai_questions']
-        ai_remaining = sub_manager.get_ai_questions_remaining(username)
+        # FIXED METHOD NAME
+        ai_remaining = sub_manager.get_remaining_ai_questions(username)
         
         progress_value = ai_used / ai_limit if ai_limit > 0 else 0
         
@@ -1387,13 +1389,12 @@ def subscription_interface():
         st.progress(progress_value, text=f"{ai_used} of {ai_limit} used ({ai_remaining} remaining)")
         
         if ai_remaining == 0:
-            st.error("⚠️ You've used all your free AI questions. Upgrade to Pro for unlimited access!")
+            st.error("You've used all your free AI questions. Upgrade to Pro for unlimited access!")
         elif ai_remaining == 1:
-            st.warning("⚠️ Only 1 free question remaining. Consider upgrading!")
+            st.warning("Only 1 free question remaining. Consider upgrading!")
 
 
 def main():
-    # ... rest of the code stays the same
     """Main application"""
     initialize_session_state()
     
