@@ -1352,11 +1352,11 @@ def subscription_interface():
                     if not price_id or price_id == 'price_xxxxx':
                             st.error("Stripe Price ID not configured. Please contact support.")
                             st.info("Admin: Add STRIPE_PRO_PRICE_ID to Streamlit secrets")
-                        else:
-                            checkout_url = stripe_handler.create_checkout_session(
-                                username,
-                                user_email,
-                                price_id
+                    else:
+                        checkout_url = stripe_handler.create_checkout_session(
+                           username,
+                           user_email,
+                           price_id
                             )
                             
                             if checkout_url:
