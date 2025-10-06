@@ -39,3 +39,44 @@ class StripeHandler:
     def get_publishable_key(self) -> str:
         """Get Stripe publishable key"""
         return self.publishable_key
+    
+    def create_checkout_session(self, username: str, email: str, price_id: str) -> str:
+        """Create Stripe checkout session"""
+        if not self.is_configured() or not self.stripe:
+            logger.warning("Stripe not configured")
+            return None
+        
+        try:
+            session = self.stripe.checkout.Session.create(
+                payment_method_types=['card'],
+                line_items=[{
+                    'price': price_id,
+                    'quantity': 1,
+                }],
+                mode='subscription',
+                success_url='https://ai-datachat.onrender.com/?success=true',
+                cancel_url='https://ai-datachat.onrender.com/?canceled=true',
+                client_reference_id=username,
+                customer_email=email,
+            )
+            return session.url
+        except Exception as e:
+            logger.error(f"Stripe checkout error: {str(e)}")
+            return None
+    
+    def get_checkout_button_html(self, checkout_url: str) -> str:
+        """Get HTML for checkout button"""
+        return f'''
+        <a href="{checkout_url}" target="_blank" style="
+            display: inline-block;
+            background-color: #635BFF;
+            color: white;
+            padding: 12px 24px;
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: bold;
+            text-align: center;
+        ">
+            Subscribe Now with Stripe
+        </a>
+        '''
