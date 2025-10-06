@@ -258,16 +258,21 @@ def logout():
 
 def load_data_file(uploaded_file):
     """Load and process uploaded file"""
+    import tempfile
+    
     try:
-        import tempfile
-temp_dir = tempfile.gettempdir()
-temp_path = Path(temp_dir) / f"temp_{uploaded_file.name}"
+        temp_dir = tempfile.gettempdir()
+        temp_path = Path(temp_dir) / f"temp_{uploaded_file.name}"
+        
         with open(temp_path, "wb") as f:
             f.write(uploaded_file.getbuffer())
         
         df = FileHandler.load_file(temp_path)
         file_info = FileHandler.get_file_info(temp_path)
-        temp_path.unlink()
+        
+        # Clean up temp file
+        if temp_path.exists():
+            temp_path.unlink()
         
         data_summary = DataAnalyzer.get_summary_statistics(df)
         
