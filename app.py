@@ -1502,25 +1502,34 @@ def main():
     
     st.markdown("""
     <style>
-        .main-header {
-            font-size: 2.5rem;
-            color: #1f77b4;
-            text-align: center;
-            margin-bottom: 0.5rem;
-        }
-        .tagline {
-            font-size: 1.2rem;
-            color: #888;
-            text-align: center;
-            margin-bottom: 2rem;
-            font-style: italic;
-        }
-        .user-info {
-            text-align: right;
-            color: #666;
-            margin-bottom: 1rem;
-            font-size: 0.9rem;
-        }
+       # Replace the .stTabs section with this:
+.stTabs [data-baseweb="tab-list"] {
+    gap: 8px;
+    background-color: #f8f9fa;
+    padding: 0.5rem;
+    border-radius: 12px;
+}
+
+.stTabs [data-baseweb="tab"] {
+    height: 50px;
+    border-radius: 8px;
+    font-weight: 600;
+    color: #2c3e50 !important;
+    font-size: 1rem !important;
+}
+
+.stTabs [data-baseweb="tab"]:hover {
+    background-color: rgba(31, 119, 180, 0.1);
+}
+
+.stTabs [aria-selected="true"] {
+    background: linear-gradient(135deg, #1f77b4 0%, #2c3e50 100%) !important;
+    color: white !important;
+}
+
+.stTabs [aria-selected="true"] button {
+    color: white !important;
+}
     </style>
     """, unsafe_allow_html=True)
     
