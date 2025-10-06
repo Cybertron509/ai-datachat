@@ -9,3 +9,5 @@ statsmodels
 stripe
 bcrypt
 supabase
+scikit-learn>=1.3.0
+markdown>=3.4.0
