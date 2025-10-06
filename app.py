@@ -259,7 +259,9 @@ def logout():
 def load_data_file(uploaded_file):
     """Load and process uploaded file"""
     try:
-        temp_path = Path(f"temp_{uploaded_file.name}")
+        import tempfile
+temp_dir = tempfile.gettempdir()
+temp_path = Path(temp_dir) / f"temp_{uploaded_file.name}"
         with open(temp_path, "wb") as f:
             f.write(uploaded_file.getbuffer())
         
