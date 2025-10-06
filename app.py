@@ -25,6 +25,7 @@ import os
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
+from src.utils.stripe_handler import StripeHandler
 from src.utils.subscription import SubscriptionManager
 from src.utils.file_handler import FileHandler
 from src.utils.data_analyzer import DataAnalyzer
