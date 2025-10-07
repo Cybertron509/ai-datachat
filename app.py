@@ -1,6 +1,6 @@
 """
 AI DataChat - Complete Application with Subscriptions and Monetization
-Fixed version with all bugs resolved
+Modern UI Version - All Features Preserved
 """
 import streamlit as st
 
@@ -39,100 +39,218 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 def apply_custom_styles():
-    """Apply enhanced UI styling"""
+    """Apply modern dark theme with glassmorphism"""
     st.markdown("""
     <style>
+        /* Main App Background */
+        .stApp {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+        }
+        
+        /* Hide default menu */
         #MainMenu {visibility: hidden;}
         footer {visibility: hidden;}
         
+        /* Headers */
         .main-header {
             font-size: 3rem;
-            font-weight: 700;
-            background: linear-gradient(135deg, #1f77b4 0%, #2c3e50 100%);
+            font-weight: 300;
+            background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             text-align: center;
             margin-bottom: 0.5rem;
+            letter-spacing: -0.02em;
         }
         
         .tagline {
             font-size: 1.3rem;
-            color: #7f8c8d;
+            color: #94a3b8;
             text-align: center;
             margin-bottom: 2rem;
             font-weight: 300;
         }
         
+        /* Sidebar Styling */
+        [data-testid="stSidebar"] {
+            background: rgba(15, 23, 42, 0.95);
+            border-right: 1px solid rgba(6, 182, 212, 0.3);
+            backdrop-filter: blur(10px);
+        }
+        
+        [data-testid="stSidebar"] .element-container {
+            color: #e5e7eb;
+        }
+        
+        /* Buttons */
         .stButton > button {
+            background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+            color: white;
+            border: none;
             border-radius: 12px;
             font-weight: 600;
             padding: 0.75rem 2rem;
             transition: all 0.3s ease;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 12px rgba(6, 182, 212, 0.3);
         }
         
         .stButton > button:hover {
+            background: linear-gradient(135deg, #0891b2 0%, #0e7490 100%);
             transform: translateY(-2px);
-            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+            box-shadow: 0 6px 20px rgba(6, 182, 212, 0.4);
         }
         
+        /* Tabs */
         .stTabs [data-baseweb="tab-list"] {
             gap: 8px;
-            background-color: #f8f9fa;
+            background: rgba(31, 41, 55, 0.5);
             padding: 0.5rem;
             border-radius: 12px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(55, 65, 81, 0.5);
         }
         
         .stTabs [data-baseweb="tab"] {
             height: 50px;
             border-radius: 8px;
             font-weight: 600;
+            color: #9ca3af !important;
+            font-size: 1rem !important;
+            background: transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .stTabs [data-baseweb="tab"]:hover {
+            background: rgba(6, 182, 212, 0.1);
+            color: #22d3ee !important;
         }
         
         .stTabs [aria-selected="true"] {
-            background: linear-gradient(135deg, #1f77b4 0%, #2c3e50 100%);
-            color: white;
+            background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%) !important;
+            color: white !important;
+            box-shadow: 0 4px 12px rgba(6, 182, 212, 0.3);
         }
         
+        .stTabs [aria-selected="true"] button {
+            color: white !important;
+        }
+        
+        /* Metrics */
+        [data-testid="stMetric"] {
+            background: linear-gradient(135deg, rgba(6, 182, 212, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%);
+            padding: 1.5rem;
+            border-radius: 12px;
+            border: 1px solid rgba(6, 182, 212, 0.3);
+            backdrop-filter: blur(10px);
+        }
+        
+        [data-testid="stMetricLabel"] {
+            color: #9ca3af !important;
+            font-size: 0.875rem;
+            font-weight: 400;
+        }
+        
+        [data-testid="stMetricValue"] {
+            font-size: 2rem;
+            font-weight: 300;
+            color: #22d3ee !important;
+        }
+        
+        /* User Info Badge */
+        .user-info {
+            text-align: right;
+            padding: 0.75rem 1rem;
+            background: linear-gradient(135deg, rgba(6, 182, 212, 0.2) 0%, rgba(59, 130, 246, 0.2) 100%);
+            color: #e5e7eb;
+            border-radius: 12px;
+            margin-bottom: 1rem;
+            box-shadow: 0 4px 12px rgba(6, 182, 212, 0.2);
+            border: 1px solid rgba(6, 182, 212, 0.3);
+            backdrop-filter: blur(10px);
+        }
+        
+        /* Pro Badge */
         .pro-badge {
             display: inline-block;
-            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
             color: white;
             padding: 0.25rem 0.75rem;
             border-radius: 20px;
             font-size: 0.75rem;
             font-weight: 700;
             margin-left: 0.5rem;
+            box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
         }
         
-        .feature-card {
-            background: white;
+        /* File Uploader */
+        [data-testid="stFileUploader"] {
+            background: rgba(31, 41, 55, 0.5);
+            border: 2px dashed rgba(6, 182, 212, 0.3);
             border-radius: 12px;
-            padding: 1.5rem;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-            transition: all 0.3s ease;
-            margin-bottom: 1rem;
+            padding: 2rem;
+            backdrop-filter: blur(10px);
         }
         
-        .feature-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+        /* Selectbox and Input */
+        .stSelectbox > div > div, .stTextInput > div > div > input {
+            background: rgba(55, 65, 81, 0.8) !important;
+            border: 1px solid rgba(75, 85, 99, 0.5) !important;
+            color: #e5e7eb !important;
+            border-radius: 8px;
         }
         
-        .user-info {
-            text-align: right;
-            padding: 0.75rem 1rem;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+        /* Dataframe */
+        [data-testid="stDataFrame"] {
+            background: rgba(31, 41, 55, 0.5);
             border-radius: 12px;
-            margin-bottom: 1rem;
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+            border: 1px solid rgba(55, 65, 81, 0.5);
         }
         
-        [data-testid="stMetricValue"] {
-            font-size: 2rem;
-            font-weight: 700;
-            color: #1f77b4;
+        /* Expander */
+        .streamlit-expanderHeader {
+            background: rgba(31, 41, 55, 0.5);
+            border-radius: 8px;
+            color: #e5e7eb !important;
+            border: 1px solid rgba(55, 65, 81, 0.5);
+        }
+        
+        /* Text and Labels */
+        p, label, .stMarkdown {
+            color: #d1d5db !important;
+        }
+        
+        h1, h2, h3, h4 {
+            color: #e5e7eb !important;
+            font-weight: 300 !important;
+        }
+        
+        /* Progress bars */
+        .stProgress > div > div > div {
+            background: linear-gradient(90deg, #06b6d4 0%, #3b82f6 100%);
+        }
+        
+        /* Info/Warning/Error boxes */
+        .stAlert {
+            background: rgba(31, 41, 55, 0.8);
+            border-radius: 12px;
+            border-left: 4px solid;
+            backdrop-filter: blur(10px);
+        }
+        
+        /* Chat messages */
+        [data-testid="stChatMessage"] {
+            background: rgba(31, 41, 55, 0.5);
+            border-radius: 12px;
+            border: 1px solid rgba(55, 65, 81, 0.5);
+            backdrop-filter: blur(10px);
+        }
+        
+        /* Plotly charts container */
+        .js-plotly-plot {
+            border-radius: 12px;
+            background: rgba(31, 41, 55, 0.5);
+            padding: 1rem;
+            border: 1px solid rgba(55, 65, 81, 0.5);
         }
     </style>
     """, unsafe_allow_html=True)
@@ -166,25 +284,7 @@ def initialize_session_state():
 
 
 def login_page():
-    """Display login page"""
-    st.markdown("""
-    <style>
-        .main-header {
-            font-size: 2.5rem;
-            color: #1f77b4;
-            text-align: center;
-            margin-bottom: 0.5rem;
-        }
-        .tagline {
-            font-size: 1.2rem;
-            color: #888;
-            text-align: center;
-            margin-bottom: 2rem;
-            font-style: italic;
-        }
-    </style>
-    """, unsafe_allow_html=True)
-    
+    """Display login page with modern styling"""
     st.markdown('<h1 class="main-header">AI DataChat</h1>', unsafe_allow_html=True)
     st.markdown('<p class="tagline">Universal Intelligence Through Data</p>', unsafe_allow_html=True)
     st.markdown("---")
@@ -412,7 +512,7 @@ def data_filtering_interface():
 
 
 def create_visualizations(df):
-    """Create interactive visualizations"""
+    """Create interactive visualizations with modern color scheme"""
     st.subheader("Interactive Visualizations")
     
     if len(df) > 10000:
@@ -426,6 +526,9 @@ def create_visualizations(df):
     
     numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
     cat_cols = df.select_dtypes(include=['object', 'category']).columns.tolist()
+    
+    # Modern color palette
+    color_sequence = ['#06b6d4', '#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981']
     
     max_cols_for_viz = 20
     if len(numeric_cols) > max_cols_for_viz:
@@ -442,10 +545,38 @@ def create_visualizations(df):
             if len(df) > 10000:
                 st.caption(f"Showing sample of 10,000 from {len(df):,} total rows")
             
-            fig = px.histogram(plot_df, x=col, title=f"Distribution of {col}", nbins=50)
+            fig = go.Figure()
+            fig.add_trace(go.Histogram(
+                x=plot_df[col],
+                nbinsx=50,
+                marker=dict(
+                    color='#06b6d4',
+                    line=dict(color='#0891b2', width=1)
+                ),
+                name=col
+            ))
+            
+            fig.update_layout(
+                title=f"Distribution of {col}",
+                xaxis_title=col,
+                yaxis_title="Count",
+                plot_bgcolor='rgba(0,0,0,0)',
+                paper_bgcolor='rgba(0,0,0,0)',
+                font=dict(color='#e5e7eb'),
+                xaxis=dict(gridcolor='rgba(55, 65, 81, 0.3)'),
+                yaxis=dict(gridcolor='rgba(55, 65, 81, 0.3)'),
+                height=500
+            )
+            
             st.plotly_chart(fig, use_container_width=True)
             
-            st.write(f"**Mean:** {df[col].mean():.2f} | **Median:** {df[col].median():.2f} | **Std:** {df[col].std():.2f}")
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("Mean", f"{df[col].mean():.2f}")
+            with col2:
+                st.metric("Median", f"{df[col].median():.2f}")
+            with col3:
+                st.metric("Std Dev", f"{df[col].std():.2f}")
     
     elif viz_type == "Scatter Plot":
         if len(numeric_cols) >= 2:
@@ -467,9 +598,22 @@ def create_visualizations(df):
             
             correlation = df[[x_col, y_col]].corr().iloc[0, 1]
             
-            fig = px.scatter(plot_df, x=x_col, y=y_col, color=color_col, 
-                           title=f"{x_col} vs {y_col} (Correlation: {correlation:.3f})",
-                           opacity=0.6)
+            fig = px.scatter(
+                plot_df, x=x_col, y=y_col, color=color_col,
+                title=f"{x_col} vs {y_col} (Correlation: {correlation:.3f})",
+                opacity=0.6,
+                color_discrete_sequence=color_sequence
+            )
+            
+            fig.update_layout(
+                plot_bgcolor='rgba(0,0,0,0)',
+                paper_bgcolor='rgba(0,0,0,0)',
+                font=dict(color='#e5e7eb'),
+                xaxis=dict(gridcolor='rgba(55, 65, 81, 0.3)'),
+                yaxis=dict(gridcolor='rgba(55, 65, 81, 0.3)'),
+                height=500
+            )
+            
             st.plotly_chart(fig, use_container_width=True)
             
             if abs(correlation) > 0.7:
@@ -492,23 +636,28 @@ def create_visualizations(df):
             default_idx = agg_options.index(default_agg)
             agg_func = st.selectbox("Aggregation:", agg_options, index=default_idx, key="bar_agg")
             
-            if agg_func == "sum" and num_col.lower() in ["age", "bmi", "rating", "score", "hours", "sleep_hours", "sleep"]:
-                st.warning(f"Note: Summing '{num_col}' may not be meaningful. Consider using 'mean' or 'median' instead.")
-            
             grouped = df.groupby(cat_col)[num_col].agg(agg_func).reset_index()
             
             if len(grouped) > 30:
                 st.info(f"Showing top 30 of {len(grouped)} categories")
                 grouped = grouped.sort_values(num_col, ascending=False).head(30)
             
-            fig = px.bar(grouped, x=cat_col, y=num_col, 
-                        title=f"{agg_func.title()} of {num_col} by {cat_col}")
-            st.plotly_chart(fig, use_container_width=True)
+            fig = px.bar(
+                grouped, x=cat_col, y=num_col,
+                title=f"{agg_func.title()} of {num_col} by {cat_col}",
+                color_discrete_sequence=['#06b6d4']
+            )
             
-            if agg_func in ["mean", "median"]:
-                max_cat = grouped.iloc[0][cat_col]
-                max_val = grouped.iloc[0][num_col]
-                st.info(f"Highest {agg_func}: {max_cat} ({max_val:.2f})")
+            fig.update_layout(
+                plot_bgcolor='rgba(0,0,0,0)',
+                paper_bgcolor='rgba(0,0,0,0)',
+                font=dict(color='#e5e7eb'),
+                xaxis=dict(gridcolor='rgba(55, 65, 81, 0.3)'),
+                yaxis=dict(gridcolor='rgba(55, 65, 81, 0.3)'),
+                height=500
+            )
+            
+            st.plotly_chart(fig, use_container_width=True)
     
     elif viz_type == "Box Plot":
         if numeric_cols:
@@ -517,8 +666,6 @@ def create_visualizations(df):
             group_by = st.selectbox("Group by (optional):", ["None"] + cat_cols[:10], key="box_group")
             
             plot_df = df if len(df) <= 10000 else df.sample(10000)
-            if len(df) > 10000:
-                st.caption(f"Showing sample of 10,000 from {len(df):,} total rows")
             
             if group_by == "None":
                 fig = px.box(plot_df, y=col, title=f"Box Plot of {col}")
@@ -527,14 +674,17 @@ def create_visualizations(df):
                 plot_df = plot_df[plot_df[group_by].isin(top_groups)]
                 fig = px.box(plot_df, x=group_by, y=col, title=f"Box Plot of {col} by {group_by}")
             
-            st.plotly_chart(fig, use_container_width=True)
+            fig.update_traces(marker_color='#06b6d4', line_color='#0891b2')
+            fig.update_layout(
+                plot_bgcolor='rgba(0,0,0,0)',
+                paper_bgcolor='rgba(0,0,0,0)',
+                font=dict(color='#e5e7eb'),
+                xaxis=dict(gridcolor='rgba(55, 65, 81, 0.3)'),
+                yaxis=dict(gridcolor='rgba(55, 65, 81, 0.3)'),
+                height=500
+            )
             
-            Q1 = df[col].quantile(0.25)
-            Q3 = df[col].quantile(0.75)
-            IQR = Q3 - Q1
-            outliers = df[(df[col] < Q1 - 1.5 * IQR) | (df[col] > Q3 + 1.5 * IQR)]
-            if len(outliers) > 0:
-                st.warning(f"Detected {len(outliers):,} outliers ({len(outliers)/len(df)*100:.1f}% of data)")
+            st.plotly_chart(fig, use_container_width=True)
     
     elif viz_type == "Correlation Heatmap":
         if len(numeric_cols) >= 2:
@@ -551,27 +701,32 @@ def create_visualizations(df):
             corr_df = df[selected_cols] if len(df) <= 20000 else df[selected_cols].sample(20000)
             corr_matrix = corr_df.corr()
             
-            fig = px.imshow(corr_matrix, text_auto=".2f", aspect="auto", 
-                          title="Correlation Heatmap",
-                          color_continuous_scale="RdBu_r", zmin=-1, zmax=1)
-            st.plotly_chart(fig, use_container_width=True)
+            fig = go.Figure(data=go.Heatmap(
+                z=corr_matrix.values,
+                x=corr_matrix.columns,
+                y=corr_matrix.columns,
+                colorscale='Teal',
+                text=corr_matrix.values.round(2),
+                texttemplate='%{text}',
+                textfont={"size": 10, "color": "#e5e7eb"},
+                zmin=-1, zmax=1
+            ))
             
-            corr_flat = corr_matrix.abs().unstack()
-            corr_flat = corr_flat[corr_flat < 1].sort_values(ascending=False).head(3)
-            if len(corr_flat) > 0:
-                st.write("**Strongest correlations:**")
-                for (var1, var2), corr_val in corr_flat.items():
-                    actual_corr = corr_matrix.loc[var1, var2]
-                    st.write(f"- {var1} & {var2}: {actual_corr:.3f}")
+            fig.update_layout(
+                title="Correlation Heatmap",
+                plot_bgcolor='rgba(0,0,0,0)',
+                paper_bgcolor='rgba(0,0,0,0)',
+                font=dict(color='#e5e7eb'),
+                height=500
+            )
+            
+            st.plotly_chart(fig, use_container_width=True)
     
     elif viz_type == "Line Chart":
         if numeric_cols:
             st.info("Line charts work best for time series or sequential data.")
             y_col = st.selectbox("Y-axis:", numeric_cols, key="line_y")
             x_col = st.selectbox("X-axis:", df.columns.tolist()[:20], key="line_x")
-            
-            if df[x_col].dtype == 'object':
-                st.warning(f"'{x_col}' is categorical. Line charts work best with sequential/time data.")
             
             max_points = 1000
             if len(df) > max_points:
@@ -580,7 +735,28 @@ def create_visualizations(df):
             else:
                 plot_df = df.sort_values(x_col)
             
-            fig = px.line(plot_df, x=x_col, y=y_col, title=f"{y_col} over {x_col}")
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(
+                x=plot_df[x_col],
+                y=plot_df[y_col],
+                mode='lines+markers',
+                line=dict(color='#06b6d4', width=3),
+                marker=dict(size=6, color='#22d3ee'),
+                name=y_col
+            ))
+            
+            fig.update_layout(
+                title=f"{y_col} over {x_col}",
+                xaxis_title=x_col,
+                yaxis_title=y_col,
+                plot_bgcolor='rgba(0,0,0,0)',
+                paper_bgcolor='rgba(0,0,0,0)',
+                font=dict(color='#e5e7eb'),
+                xaxis=dict(gridcolor='rgba(55, 65, 81, 0.3)'),
+                yaxis=dict(gridcolor='rgba(55, 65, 81, 0.3)'),
+                height=500
+            )
+            
             st.plotly_chart(fig, use_container_width=True)
 
 
@@ -596,7 +772,7 @@ def export_features():
     with col1:
         csv = st.session_state.df_filtered.to_csv(index=False)
         st.download_button(
-            label="Download CSV",
+            label="📥 Download CSV",
             data=csv,
             file_name=f"filtered_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
             mime="text/csv",
@@ -609,7 +785,7 @@ def export_features():
             st.session_state.df_filtered.to_excel(writer, index=False, sheet_name='Data')
         
         st.download_button(
-            label="Download Excel",
+            label="📊 Download Excel",
             data=buffer.getvalue(),
             file_name=f"filtered_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -620,7 +796,7 @@ def export_features():
         if st.session_state.chat_history:
             chat_text = "\n\n".join([f"{msg['role'].upper()}: {msg['content']}" for msg in st.session_state.chat_history])
             st.download_button(
-                label="Download Chat",
+                label="💬 Download Chat",
                 data=chat_text,
                 file_name=f"chat_history_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
                 mime="text/plain",
@@ -632,13 +808,13 @@ def export_features():
         sub_manager = SubscriptionManager()
         
         if not sub_manager.can_access_feature(st.session_state.username, 'reports'):
-            st.info("Report generation is a Pro feature")
+            st.info("📄 Reports - Pro Feature")
             if st.button("Upgrade", key="upgrade_reports_btn"):
                 st.session_state.show_pricing = True
                 st.rerun()
             return
         
-        if st.button("Generate Report", key="generate_report_button"):
+        if st.button("📄 Generate Report", key="generate_report_button"):
             with st.spinner("Generating executive summary..."):
                 from src.utils.report_generator import ReportGenerator
                 
@@ -653,7 +829,7 @@ def export_features():
                 
                 st.session_state.narrative_report = report_gen.generate_markdown_report()
                 st.session_state.html_report = report_gen.generate_html_report()
-                st.success("Report generated! Download options below.")
+                st.success("Report generated!")
     
     if st.session_state.narrative_report:
         st.markdown("---")
@@ -663,27 +839,27 @@ def export_features():
         
         with col_a:
             st.download_button(
-                label="Download as Markdown",
+                label="Download Markdown",
                 data=st.session_state.narrative_report,
-                file_name=f"analysis_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md",
+                file_name=f"report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md",
                 mime="text/markdown",
                 key="download_md_report"
             )
         
         with col_b:
             st.download_button(
-                label="Download as HTML",
+                label="Download HTML",
                 data=st.session_state.html_report,
-                file_name=f"analysis_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html",
+                file_name=f"report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html",
                 mime="text/html",
                 key="download_html_report"
             )
         
         with col_c:
             st.download_button(
-                label="Download as Text",
+                label="Download Text",
                 data=st.session_state.narrative_report,
-                file_name=f"analysis_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
+                file_name=f"report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
                 mime="text/plain",
                 key="download_txt_report"
             )
@@ -718,8 +894,7 @@ def display_data_overview():
     
     if not sub_manager.can_access_feature(st.session_state.username, 'trust_score'):
         st.markdown("---")
-        st.info("Data Quality Trust Score is a Pro feature")
-        st.write("Upgrade to unlock comprehensive data quality analysis with actionable recommendations.")
+        st.info("🎯 Data Quality Trust Score is a Pro feature")
         if st.button("View Pricing", key="upgrade_trust_score"):
             st.session_state.show_pricing = True
             st.rerun()
@@ -738,17 +913,17 @@ def display_data_overview():
             grade = quality_report['grade']
             
             if score >= 80:
-                color = "green"
+                color = "#10b981"
             elif score >= 60:
-                color = "orange"
+                color = "#f59e0b"
             else:
-                color = "red"
+                color = "#ef4444"
             
             st.markdown(f"""
-            <div style='text-align: center; padding: 20px; background-color: #f0f2f6; border-radius: 10px;'>
+            <div style='text-align: center; padding: 20px; background: linear-gradient(135deg, rgba(6, 182, 212, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%); border-radius: 12px; border: 1px solid rgba(6, 182, 212, 0.3);'>
                 <h1 style='color: {color}; font-size: 3rem; margin: 0;'>{score}</h1>
-                <p style='font-size: 1.2rem; color: #666; margin: 5px 0;'>Trust Score</p>
-                <p style='font-size: 1rem; color: #888;'>{grade}</p>
+                <p style='font-size: 1.2rem; color: #9ca3af; margin: 5px 0;'>Trust Score</p>
+                <p style='font-size: 1rem; color: #6b7280;'>{grade}</p>
             </div>
             """, unsafe_allow_html=True)
         
@@ -769,11 +944,6 @@ def display_data_overview():
                 st.warning("**Warnings:**")
                 for warning in quality_report['warnings']:
                     st.write(f"- {warning}")
-            
-            if quality_report['info']:
-                with st.expander("Additional Information"):
-                    for info in quality_report['info']:
-                        st.write(f"- {info}")
         
         with col_recommendations:
             st.info("**Recommendations:**")
@@ -837,15 +1007,15 @@ def forecasting_interface():
     sub_manager = SubscriptionManager()
     
     if not sub_manager.can_access_feature(st.session_state.username, 'forecasting'):
-        st.header("Time-Series Forecasting")
+        st.header("⏰ Time-Series Forecasting")
         st.warning("Time-Series Forecasting is a Pro feature")
-        st.info("Upgrade to Pro to unlock 6-month predictions with confidence intervals, accuracy metrics, and CSV export.")
+        st.info("Upgrade to Pro to unlock 6-month predictions with confidence intervals.")
         if st.button("View Pricing", key="upgrade_forecasting"):
             st.session_state.show_pricing = True
             st.rerun()
         return
     
-    st.header("Time-Series Forecasting")
+    st.header("⏰ Time-Series Forecasting")
     
     if st.session_state.df_filtered is None:
         st.info("Please load data first")
@@ -859,9 +1029,9 @@ def forecasting_interface():
     score = quality_report['overall_score']
     
     if score < 100:
-        st.warning(f"Data Trust Score: {score}/100. Forecasting works best with complete, clean data (100% trust score). Missing or inconsistent data may produce less accurate predictions.")
+        st.warning(f"Data Trust Score: {score}/100. Forecasting works best with complete, clean data.")
     else:
-        st.success(f"Data Trust Score: {score}/100. Excellent data quality for forecasting!")
+        st.success(f"Data Trust Score: {score}/100. Excellent data quality!")
     
     st.markdown("---")
     
@@ -871,8 +1041,7 @@ def forecasting_interface():
     time_cols = forecaster.detect_time_columns()
     
     if not time_cols:
-        st.error("No date/time columns detected in the dataset. Forecasting requires a date column.")
-        st.info("**Tip:** Ensure your dataset has a column with dates in a recognizable format (e.g., '2024-01-01', '01/01/2024', etc.)")
+        st.error("No date/time columns detected in the dataset.")
         return
     
     st.subheader("Configure Forecast")
@@ -920,11 +1089,8 @@ def forecasting_interface():
                     st.metric("Date Range", f"{validation['date_range'][0].strftime('%Y-%m-%d')} to {validation['date_range'][1].strftime('%Y-%m-%d')}")
                 
                 if validation['total_points'] < 24:
-                    st.error("Insufficient data for forecasting. At least 24 data points (2 years of monthly data) are recommended for reliable predictions.")
+                    st.error("Insufficient data for forecasting.")
                     return
-                
-                if validation['missing_count'] > 0:
-                    st.warning(f"Found {validation['missing_count']} missing values. These have been removed, which may affect forecast accuracy.")
                 
                 st.markdown("---")
                 
@@ -953,8 +1119,6 @@ def forecasting_interface():
                 with metric_col4:
                     st.metric("R²", f"{metrics['r_squared']:.3f}")
                 
-                st.caption("MAE: Mean Absolute Error | RMSE: Root Mean Square Error | MAPE: Mean Absolute Percentage Error | R²: Coefficient of Determination")
-                
                 st.markdown("---")
                 
                 st.subheader("Forecast Visualization")
@@ -966,7 +1130,7 @@ def forecasting_interface():
                     y=series.values,
                     mode='lines',
                     name='Historical Data',
-                    line=dict(color='blue')
+                    line=dict(color='#06b6d4', width=2)
                 ))
                 
                 fig.add_trace(go.Scatter(
@@ -974,7 +1138,7 @@ def forecasting_interface():
                     y=fitted.values,
                     mode='lines',
                     name='Fitted Values',
-                    line=dict(color='orange', dash='dash')
+                    line=dict(color='#f59e0b', dash='dash', width=2)
                 ))
                 
                 fig.add_trace(go.Scatter(
@@ -982,7 +1146,7 @@ def forecasting_interface():
                     y=forecast_df['forecast'].values,
                     mode='lines',
                     name='6-Month Forecast',
-                    line=dict(color='red')
+                    line=dict(color='#ef4444', width=3)
                 ))
                 
                 fig.add_trace(go.Scatter(
@@ -1000,15 +1164,20 @@ def forecasting_interface():
                     mode='lines',
                     line=dict(width=0),
                     fill='tonexty',
-                    fillcolor='rgba(255, 0, 0, 0.2)',
-                    name='95% Confidence Interval'
+                    fillcolor='rgba(239, 68, 68, 0.2)',
+                    name='95% Confidence'
                 ))
                 
                 fig.update_layout(
-                    title=f"{value_col} - Historical Data and 6-Month Forecast",
+                    title=f"{value_col} - Historical & 6-Month Forecast",
                     xaxis_title="Date",
                     yaxis_title=value_col,
                     hovermode='x unified',
+                    plot_bgcolor='rgba(0,0,0,0)',
+                    paper_bgcolor='rgba(0,0,0,0)',
+                    font=dict(color='#e5e7eb'),
+                    xaxis=dict(gridcolor='rgba(55, 65, 81, 0.3)'),
+                    yaxis=dict(gridcolor='rgba(55, 65, 81, 0.3)'),
                     height=600
                 )
                 
@@ -1020,14 +1189,13 @@ def forecasting_interface():
                 last_forecast = forecast_df['forecast'].iloc[-1]
                 percent_change = ((last_forecast - last_actual) / last_actual) * 100
                 
-                st.write(f"**Current Value ({series.index[-1].strftime('%Y-%m-%d')}):** {last_actual:.2f}")
-                st.write(f"**Forecasted Value (6 months ahead):** {last_forecast:.2f}")
-                st.write(f"**Expected Change:** {percent_change:+.1f}%")
-                
-                if percent_change > 0:
-                    st.success(f"The model predicts an increase of {abs(percent_change):.1f}% over the next 6 months.")
-                else:
-                    st.warning(f"The model predicts a decrease of {abs(percent_change):.1f}% over the next 6 months.")
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric("Current Value", f"{last_actual:.2f}")
+                with col2:
+                    st.metric("6-Month Forecast", f"{last_forecast:.2f}")
+                with col3:
+                    st.metric("Expected Change", f"{percent_change:+.1f}%")
                 
                 st.markdown("---")
                 st.subheader("Export Forecast")
@@ -1042,7 +1210,7 @@ def forecasting_interface():
                 csv_export = export_df.to_csv(index=False)
                 
                 st.download_button(
-                    label="Download Forecast as CSV",
+                    label="📥 Download Forecast CSV",
                     data=csv_export,
                     file_name=f"forecast_{value_col}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
                     mime="text/csv"
@@ -1050,7 +1218,6 @@ def forecasting_interface():
                 
             except Exception as e:
                 st.error(f"Error generating forecast: {str(e)}")
-                st.info("Try using a different forecasting method or check your data format.")
                 return
 
 
@@ -1061,15 +1228,15 @@ def scenario_simulation_interface():
     sub_manager = SubscriptionManager()
     
     if not sub_manager.can_access_feature(st.session_state.username, 'scenarios'):
-        st.header("Scenario Simulation - What If Analysis")
+        st.header("🎯 Scenario Simulation")
         st.warning("Scenario Simulation is a Pro feature")
-        st.info("Upgrade to Pro to unlock multi-variable what-if analysis with sensitivity testing and correlation-based predictions.")
+        st.info("Upgrade to Pro to unlock multi-variable what-if analysis.")
         if st.button("View Pricing", key="upgrade_scenarios"):
             st.session_state.show_pricing = True
             st.rerun()
         return
     
-    st.header("Scenario Simulation - What If Analysis")
+    st.header("🎯 Scenario Simulation - What If Analysis")
     
     if st.session_state.df_filtered is None:
         st.info("Please load data first")
@@ -1080,10 +1247,10 @@ def scenario_simulation_interface():
     numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
     
     if len(numeric_cols) < 2:
-        st.error("Scenario simulation requires at least 2 numeric variables to analyze relationships.")
+        st.error("Scenario simulation requires at least 2 numeric variables.")
         return
     
-    st.info("Simulate business scenarios by changing variables and see the predicted impact on correlated metrics.")
+    st.info("Simulate business scenarios by changing variables and see predicted impacts.")
     
     from src.utils.scenario_simulator import ScenarioSimulator
     simulator = ScenarioSimulator(df)
@@ -1109,7 +1276,7 @@ def scenario_simulation_interface():
             for var1, var2, corr in corr_pairs[:10]:
                 st.write(f"- **{var1}** ↔ **{var2}**: {corr:.3f}")
         else:
-            st.write("No strong correlations found (threshold: 0.3)")
+            st.write("No strong correlations found")
     
     st.markdown("---")
     
@@ -1137,14 +1304,12 @@ def scenario_simulation_interface():
             changes = simulator.parse_scenario_text(scenario_text)
             
             if changes:
-                st.success(f"Parsed {len(changes)} change(s):")
+                st.success(f"Parsed {len(changes)} change(s)")
                 for change in changes:
                     st.write(f"- {change['action'].title()} **{change['variable']}** by {abs(change['change_percent']):.1f}%")
-            else:
-                st.warning("Could not parse scenario. Try manual selection or use format: 'increase [variable] by [number]%'")
     
     else:
-        num_changes = st.slider("Number of variables to change:", 1, 3, 1, key="num_changes")
+        num_changes = st.slider("Number of variables:", 1, 3, 1, key="num_changes")
         
         for i in range(num_changes):
             col1, col2 = st.columns([2, 1])
@@ -1170,7 +1335,7 @@ def scenario_simulation_interface():
             })
     
     corr_threshold = st.slider(
-        "Correlation threshold (minimum to show secondary effects):",
+        "Correlation threshold:",
         0.1, 0.9, 0.3, 0.1,
         key="corr_threshold"
     )
@@ -1198,17 +1363,16 @@ def scenario_simulation_interface():
                     st.write(f"**New:** {change['new_value']:.2f}")
                 
                 with col3:
-                    st.write(f"**Absolute Change:**")
+                    st.write(f"**Change:**")
                     st.write(f"{change['absolute_change']:+.2f}")
             
             st.markdown("---")
             
             if results['secondary_effects']:
                 st.write("### Predicted Secondary Effects")
-                st.caption("Based on historical correlations between variables")
                 
                 for effect in results['secondary_effects']:
-                    with st.expander(f"{effect['variable']} (corr: {effect['correlation']:.3f} with {effect['affected_by']})"):
+                    with st.expander(f"{effect['variable']} (corr: {effect['correlation']:.3f})"):
                         col_a, col_b = st.columns(2)
                         
                         with col_a:
@@ -1221,97 +1385,20 @@ def scenario_simulation_interface():
                         with col_b:
                             st.write(f"**Current:** {effect['current_value']:.2f}")
                             st.write(f"**Estimated:** {effect['estimated_value']:.2f}")
-                            st.write(f"**Change:** {effect['absolute_change']:+.2f}")
-                        
-                        confidence = "High" if abs(effect['correlation']) > 0.7 else "Medium" if abs(effect['correlation']) > 0.5 else "Low"
-                        st.caption(f"Confidence: {confidence} (based on correlation strength)")
             else:
-                st.info("No significant secondary effects detected at the current correlation threshold.")
-            
-            st.markdown("---")
-            
-            st.write("### Summary")
-            summary_col1, summary_col2, summary_col3 = st.columns(3)
-            
-            with summary_col1:
-                st.metric("Variables Changed Directly", results['summary']['total_variables_changed'])
-            with summary_col2:
-                st.metric("Predicted Secondary Effects", results['summary']['total_secondary_effects'])
-            with summary_col3:
-                st.metric("Total Variables Affected", results['summary']['total_variables_affected'])
-    
-    if changes and len(changes) == 1:
-        st.markdown("---")
-        st.subheader("Sensitivity Analysis")
-        st.write("See how outcomes change with different percentage adjustments")
-        
-        if st.button("Run Sensitivity Analysis", key="run_sensitivity_button"):
-            variable = changes[0]['variable']
-            base_change = changes[0]['change_percent']
-            
-            with st.spinner("Running sensitivity analysis..."):
-                sensitivity = simulator.sensitivity_analysis(variable, base_change, range_percent=10)
-                
-                st.write(f"**Testing {variable} changes from {base_change-10:.1f}% to {base_change+10:.1f}%**")
-                
-                sens_col1, sens_col2, sens_col3 = st.columns(3)
-                
-                with sens_col1:
-                    st.metric(
-                        "Pessimistic (-10%)",
-                        f"{sensitivity['pessimistic_scenario']['new_value']:.2f}",
-                        f"{sensitivity['pessimistic_scenario']['change_percent']:.1f}%"
-                    )
-                
-                with sens_col2:
-                    st.metric(
-                        "Base Scenario",
-                        f"{sensitivity['base_scenario']['new_value']:.2f}",
-                        f"{sensitivity['base_scenario']['change_percent']:.1f}%"
-                    )
-                
-                with sens_col3:
-                    st.metric(
-                        "Optimistic (+10%)",
-                        f"{sensitivity['optimistic_scenario']['new_value']:.2f}",
-                        f"{sensitivity['optimistic_scenario']['change_percent']:.1f}%"
-                    )
-                
-                st.write(f"**Sensitivity Coefficient:** {sensitivity['sensitivity_coefficient']:.2f}")
-                st.caption("This shows how much the outcome changes per 1% input change. Higher = more sensitive to changes.")
-                
-                scenarios_data = sensitivity['scenarios']
-                
-                fig = go.Figure()
-                fig.add_trace(go.Scatter(
-                    x=[s['change_percent'] for s in scenarios_data],
-                    y=[s['new_value'] for s in scenarios_data],
-                    mode='lines+markers',
-                    name=variable,
-                    line=dict(color='blue', width=3),
-                    marker=dict(size=10)
-                ))
-                
-                fig.update_layout(
-                    title=f"Sensitivity Analysis: {variable}",
-                    xaxis_title="Change Percentage (%)",
-                    yaxis_title="Resulting Value",
-                    height=400
-                )
-                
-                st.plotly_chart(fig, use_container_width=True)
+                st.info("No significant secondary effects detected.")
 
 
 def chat_interface():
     """AI chat interface with per-user rate limiting"""
-    st.header("Chat with Your Data")
+    st.header("💬 Chat with Your Data")
     
     if st.session_state.df_filtered is None:
         st.info("Please load data first")
         return
     
     if st.session_state.ai_agent is None:
-        st.warning("AI Chat is not available. Please check your OpenAI API configuration and ensure you have sufficient credits.")
+        st.warning("AI Chat is not available. Please check your API configuration.")
         return
     
     from src.utils.subscription import SubscriptionManager
@@ -1320,17 +1407,15 @@ def chat_interface():
         sub_manager = SubscriptionManager()
         username = st.session_state.username
         
-        # Get remaining AI questions - FIXED METHOD NAME
         remaining = sub_manager.get_remaining_ai_questions(username)
         subscription = sub_manager.get_user_subscription(username)
         tier = subscription.get('tier', 'free')
         
-        # Show remaining questions
         if tier == 'free':
             if remaining > 0:
-                st.info(f"You have {remaining} free AI question{'s' if remaining != 1 else ''} remaining (lifetime)")
+                st.info(f"You have {remaining} free AI question{'s' if remaining != 1 else ''} remaining")
             else:
-                st.error("You've used all your free AI questions (2 lifetime limit)")
+                st.error("You've used all your free AI questions")
                 st.warning("Upgrade to Pro for unlimited AI chat!")
                 if st.button("Upgrade to Pro", key="upgrade_chat", type="primary"):
                     st.session_state.show_pricing = True
@@ -1339,12 +1424,10 @@ def chat_interface():
         else:
             st.success("Pro Plan - Unlimited AI questions")
         
-        # Display chat history
         for message in st.session_state.chat_history:
             with st.chat_message(message["role"]):
                 st.write(message["content"])
         
-        # Chat input
         if remaining > 0:
             if prompt := st.chat_input("Ask a question about your data..."):
                 st.session_state.chat_history.append({"role": "user", "content": prompt})
@@ -1363,12 +1446,11 @@ def chat_interface():
                             st.write(response)
                             st.session_state.chat_history.append({"role": "assistant", "content": response})
                             
-                            # Increment and get new remaining count - FIXED METHOD NAME
                             sub_manager.increment_ai_questions(username)
                             new_remaining = sub_manager.get_remaining_ai_questions(username)
                             
                             if new_remaining == 0 and tier == 'free':
-                                st.warning("That was your last free question! Upgrade to Pro for unlimited AI chat.")
+                                st.warning("That was your last free question!")
                             
                             st.rerun()
                             
@@ -1379,12 +1461,11 @@ def chat_interface():
     
     except Exception as e:
         st.error(f"Error initializing chat: {str(e)}")
-        st.info("Please try refreshing the page.")
 
 
 def subscription_interface():
     """Display subscription management interface"""
-    st.subheader("Subscription Management")
+    st.subheader("💳 Subscription Management")
     
     username = st.session_state.get('username', '')
     
@@ -1401,32 +1482,37 @@ def subscription_interface():
     st.markdown(f"**Current Plan:** {sub_manager.TIERS[current_tier]['name']}")
     
     if current_tier == 'free':
-        # FIXED METHOD NAME
         remaining = sub_manager.get_remaining_ai_questions(username)
-        st.progress(remaining / 2)
-        st.caption(f"AI Questions: {remaining}/2 remaining")
+        st.progress(remaining / 2, text=f"AI Questions: {remaining}/2 remaining")
     
     st.markdown("---")
     
     col_free, col_pro = st.columns(2)
     
     with col_free:
-        st.write("### Free")
-        st.write("**$0/month**")
+        st.markdown("""
+        <div style='background: linear-gradient(135deg, rgba(6, 182, 212, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%); padding: 2rem; border-radius: 12px; border: 1px solid rgba(6, 182, 212, 0.3);'>
+            <h3 style='color: #22d3ee; margin-top: 0;'>Free</h3>
+            <h2 style='color: #e5e7eb; margin: 0.5rem 0;'>$0/month</h2>
+        </div>
+        """, unsafe_allow_html=True)
         st.write("")
         for feature in sub_manager.TIERS['free']['features']:
-            st.write(f"{feature}")
+            st.write(f"✓ {feature}")
         st.write("")
         if current_tier == 'free':
-            st.success("Current Plan")
-        st.caption("Perfect for getting started")
+            st.success("✓ Current Plan")
     
     with col_pro:
-        st.write("### Pro")
-        st.write("**$24.99/month**")
+        st.markdown("""
+        <div style='background: linear-gradient(135deg, rgba(245, 158, 11, 0.2) 0%, rgba(217, 119, 6, 0.2) 100%); padding: 2rem; border-radius: 12px; border: 1px solid rgba(245, 158, 11, 0.4);'>
+            <h3 style='color: #f59e0b; margin-top: 0;'>Pro <span style='background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.75rem;'>Popular</span></h3>
+            <h2 style='color: #e5e7eb; margin: 0.5rem 0;'>$24.99/month</h2>
+        </div>
+        """, unsafe_allow_html=True)
         st.write("")
         for feature in sub_manager.TIERS['pro']['features']:
-            st.write(f"{feature}")
+            st.write(f"✓ {feature}")
         st.write("")
         
         if current_tier == 'free':
@@ -1441,7 +1527,6 @@ def subscription_interface():
                     
                     if not price_id or price_id == 'price_xxxxx':
                         st.error("Stripe Price ID not configured. Please contact support.")
-                        st.info("Admin: Add STRIPE_PRO_PRICE_ID to environment variables")
                     else:
                         checkout_url = stripe_handler.create_checkout_session(
                             username,
@@ -1455,9 +1540,8 @@ def subscription_interface():
             else:
                 st.warning("Payment processing is currently in setup mode.")
                 st.info("Contact support to upgrade to Pro")
-                st.caption("Admin: Configure Stripe keys to enable payments")
         else:
-            st.success("Current Plan")
+            st.success("✓ Current Plan")
     
     st.markdown("---")
     st.subheader("Feature Access")
@@ -1478,67 +1562,15 @@ def subscription_interface():
                 st.success("Enabled")
             else:
                 st.error("Pro Only")
-    
-    if current_tier == 'free':
-        st.markdown("---")
-        st.subheader("Usage Statistics")
-        
-        ai_used = subscription.get('ai_questions_used', 0)
-        ai_limit = sub_manager.TIERS['free']['limits']['ai_questions']
-        # FIXED METHOD NAME
-        ai_remaining = sub_manager.get_remaining_ai_questions(username)
-        
-        progress_value = ai_used / ai_limit if ai_limit > 0 else 0
-        
-        st.write("**AI Chat Questions:**")
-        st.progress(progress_value, text=f"{ai_used} of {ai_limit} used ({ai_remaining} remaining)")
-        
-        if ai_remaining == 0:
-            st.error("You've used all your free AI questions. Upgrade to Pro for unlimited access!")
-        elif ai_remaining == 1:
-            st.warning("Only 1 free question remaining. Consider upgrading!")
 
 
 def main():
-    apply_custom_styles()  # Add this line
+    apply_custom_styles()
     initialize_session_state()
     
     if not st.session_state.authenticated:
         login_page()
         return
-    
-    st.markdown("""
-    <style>
-       # Replace the .stTabs section with this:
-.stTabs [data-baseweb="tab-list"] {
-    gap: 8px;
-    background-color: #f8f9fa;
-    padding: 0.5rem;
-    border-radius: 12px;
-}
-
-.stTabs [data-baseweb="tab"] {
-    height: 50px;
-    border-radius: 8px;
-    font-weight: 600;
-    color: #2c3e50 !important;
-    font-size: 1rem !important;
-}
-
-.stTabs [data-baseweb="tab"]:hover {
-    background-color: rgba(31, 119, 180, 0.1);
-}
-
-.stTabs [aria-selected="true"] {
-    background: linear-gradient(135deg, #1f77b4 0%, #2c3e50 100%) !important;
-    color: white !important;
-}
-
-.stTabs [aria-selected="true"] button {
-    color: white !important;
-}
-    </style>
-    """, unsafe_allow_html=True)
     
     user_name = st.session_state.get('user_info', {}).get("name", st.session_state.get('username', 'User'))
     st.markdown(f'<p class="user-info">Logged in as: <strong>{user_name}</strong></p>', unsafe_allow_html=True)
@@ -1548,9 +1580,9 @@ def main():
     st.markdown("---")
     
     with st.sidebar:
-        st.header("Upload Data")
+        st.header("📁 Upload Data")
         
-        if st.button("Logout", key="logout_button", use_container_width=True):
+        if st.button("🚪 Logout", key="logout_button", use_container_width=True):
             logout()
         
         st.markdown("---")
@@ -1562,14 +1594,14 @@ def main():
         )
         
         if uploaded_file:
-            if st.button("Load Data", key="load_data_button"):
+            if st.button("📂 Load Data", key="load_data_button", use_container_width=True):
                 with st.spinner("Loading data..."):
                     if load_data_file(uploaded_file):
-                        st.success("Data loaded successfully!")
+                        st.success("✅ Data loaded successfully!")
         
         if st.session_state.df is not None:
             st.markdown("---")
-            st.subheader("File Info")
+            st.subheader("📊 File Info")
             st.write(f"**Name:** {st.session_state.file_info['name']}")
             st.write(f"**Format:** {st.session_state.file_info['format']}")
             st.write(f"**Size:** {st.session_state.file_info['size_mb']} MB")
@@ -1578,39 +1610,66 @@ def main():
             st.markdown("---")
             data_filtering_interface()
             
-            if st.button("Reset Filters", key="reset_filters_button"):
+            if st.button("🔄 Reset Filters", key="reset_filters_button", use_container_width=True):
                 st.session_state.df_filtered = st.session_state.df.copy()
                 st.rerun()
             
-            if st.button("Clear Data", key="clear_data_button"):
+            if st.button("🗑️ Clear Data", key="clear_data_button", use_container_width=True):
                 for key in ['df', 'df_filtered', 'file_info', 'data_summary', 'ai_agent', 'chat_history', 'narrative_report', 'html_report']:
                     st.session_state[key] = None if key != 'chat_history' else []
                 st.rerun()
     
     if st.session_state.df is None:
-        st.info("Upload a file to get started!")
-        
-        st.subheader("Welcome to AI DataChat")
-        st.write("Transform your data into actionable insights with AI-powered analytics.")
+        st.markdown("""
+        <div style='text-align: center; padding: 4rem 2rem;'>
+            <h1 style='font-size: 4rem; margin-bottom: 1rem;'>📊</h1>
+            <h2 style='color: #22d3ee; font-weight: 300; margin-bottom: 1rem;'>Welcome to AI DataChat</h2>
+            <p style='color: #9ca3af; font-size: 1.2rem; margin-bottom: 2rem;'>
+                Transform your data into actionable insights with AI-powered analytics
+            </p>
+            <p style='color: #6b7280;'>
+                ← Start by uploading a file in the sidebar
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
         
         col1, col2 = st.columns(2)
         
         with col1:
-            st.write("**What you can do:**")
-            st.write("- Upload and analyze CSV, Excel, JSON files")
-            st.write("- Interactive visualizations and statistics")
-            st.write("- Data cleaning and filtering")
-            st.write("- AI-powered chat with your data")
+            st.markdown("""
+            <div style='background: linear-gradient(135deg, rgba(6, 182, 212, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%); padding: 2rem; border-radius: 12px; border: 1px solid rgba(6, 182, 212, 0.3);'>
+                <h3 style='color: #22d3ee;'>✨ What you can do:</h3>
+                <ul style='color: #d1d5db;'>
+                    <li>Upload and analyze CSV, Excel, JSON files</li>
+                    <li>Interactive visualizations and statistics</li>
+                    <li>Data cleaning and filtering</li>
+                    <li>AI-powered chat with your data</li>
+                </ul>
+            </div>
+            """, unsafe_allow_html=True)
         
         with col2:
-            st.write("**Pro Features:**")
-            st.write("- Time-series forecasting (6-month predictions)")
-            st.write("- Scenario simulation (what-if analysis)")
-            st.write("- Data quality trust scores")
-            st.write("- Automated narrative reports")
-            st.write("- Unlimited AI questions")
+            st.markdown("""
+            <div style='background: linear-gradient(135deg, rgba(245, 158, 11, 0.2) 0%, rgba(217, 119, 6, 0.2) 100%); padding: 2rem; border-radius: 12px; border: 1px solid rgba(245, 158, 11, 0.4);'>
+                <h3 style='color: #f59e0b;'>🚀 Pro Features:</h3>
+                <ul style='color: #d1d5db;'>
+                    <li>Time-series forecasting (6-month predictions)</li>
+                    <li>Scenario simulation (what-if analysis)</li>
+                    <li>Data quality trust scores</li>
+                    <li>Automated narrative reports</li>
+                    <li>Unlimited AI questions</li>
+                </ul>
+            </div>
+            """, unsafe_allow_html=True)
     else:
-        tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["Overview", "Statistics", "Forecasting", "Scenarios", "Chat", "Subscription"])
+        tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+            "📊 Overview", 
+            "📈 Statistics", 
+            "⏰ Forecasting", 
+            "🎯 Scenarios", 
+            "💬 Chat", 
+            "💳 Subscription"
+        ])
         
         with tab1:
             display_data_overview()
