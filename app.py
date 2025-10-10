@@ -61,14 +61,13 @@ def apply_custom_styles():
         #MainMenu {visibility: hidden;}
         footer {visibility: hidden;}
         
-        /* ============ ADD THESE NEW LOGO STYLES ============ */
         /* Logo Container Styling */
         .logo-container {
             display: flex;
             align-items: center;
-            justify-content: flex-start;
-            padding: 0.5rem 0;
-            margin-bottom: 0.5rem;
+            justify-content: center;
+            padding: 1rem 0;
+            margin-bottom: 1rem;
         }
         
         /* Make logo responsive */
@@ -102,7 +101,6 @@ def apply_custom_styles():
         .copyright-footer a:hover {
             color: #22d3ee;
         }
-        /* ============ END NEW LOGO STYLES ============ */
         
         /* Headers */
         .main-header {
@@ -395,6 +393,12 @@ def show_free_pro_banner():
 
 def login_page():
     """Display login page with modern styling"""
+    
+    # Add brain logo to login page - centered
+    col_logo_left, col_logo_center, col_logo_right = st.columns([1, 2, 1])
+    with col_logo_center:
+        st.image("assets/logo-brain.png", use_container_width=True)
+    
     st.markdown('<h1 class="main-header">AI DataChat</h1>', unsafe_allow_html=True)
     st.markdown('<p class="tagline">Universal Intelligence Through Data</p>', unsafe_allow_html=True)
     st.markdown("---")
@@ -1955,16 +1959,13 @@ def main():
     user_name = st.session_state.get('user_info', {}).get("name", st.session_state.get('username', 'User'))
     st.markdown(f'<p class="user-info">Logged in as: <strong>{user_name}</strong></p>', unsafe_allow_html=True)
     
-    # ============ ADD BRAIN LOGO HERE ============
-    col_logo, col_title = st.columns([1, 4])
+    # ============ BRAIN LOGO AND HEADER ============
+    # Display brain logo at full width for better visibility
+    st.image("assets/logo-brain.png", use_container_width=True)
     
-    with col_logo:
-        st.image("assets/logo-brain.png", width=180)
-    
-    with col_title:
-        st.markdown('<h1 class="main-header">AI DataChat</h1>', unsafe_allow_html=True)
-        st.markdown('<p class="tagline">Universal Intelligence Through Data</p>', unsafe_allow_html=True)
-    # ============================================
+    st.markdown('<h1 class="main-header">AI DataChat</h1>', unsafe_allow_html=True)
+    st.markdown('<p class="tagline">Universal Intelligence Through Data</p>', unsafe_allow_html=True)
+    # ================================================
     
     st.markdown("---")
     
@@ -2016,9 +2017,16 @@ def main():
     
     if st.session_state.df is None:
         st.markdown("""
-        <div style='text-align: center; padding: 4rem 2rem;'>
-            <h1 style='font-size: 4rem; margin-bottom: 1rem;'>📊</h1>
-            <h2 style='color: #22d3ee; font-weight: 300; margin-bottom: 1rem;'>Welcome to AI DataChat</h2>
+        <div style='text-align: center; padding: 3rem 0;'>
+        """, unsafe_allow_html=True)
+        
+        # Add large brain logo in center of welcome page
+        col_welcome_left, col_welcome_center, col_welcome_right = st.columns([1, 2, 1])
+        with col_welcome_center:
+            st.image("assets/logo-brain.png", use_container_width=True)
+        
+        st.markdown("""
+            <h2 style='color: #22d3ee; font-weight: 300; margin-bottom: 1rem; margin-top: 2rem;'>Welcome to AI DataChat</h2>
             <p style='color: #9ca3af; font-size: 1.2rem; margin-bottom: 2rem;'>
                 Transform your data into actionable insights with AI-powered analytics
             </p>
