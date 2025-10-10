@@ -1,0 +1,14 @@
+[browser]
+title = "AI DataChat - Universal Intelligence Through Data"
+favicon = "assets/favicon.png"
+
+[theme]
+primaryColor = "#06b6d4"
+backgroundColor = "#0f172a"
+secondaryBackgroundColor = "#1e293b"
+textColor = "#e5e7eb"
+font = "sans serif"
+
+[server]
+headless = true
+port = 8501

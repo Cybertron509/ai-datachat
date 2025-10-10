@@ -61,6 +61,49 @@ def apply_custom_styles():
         #MainMenu {visibility: hidden;}
         footer {visibility: hidden;}
         
+        /* ============ ADD THESE NEW LOGO STYLES ============ */
+        /* Logo Container Styling */
+        .logo-container {
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            padding: 0.5rem 0;
+            margin-bottom: 0.5rem;
+        }
+        
+        /* Make logo responsive */
+        @media (max-width: 768px) {
+            .logo-container img {
+                max-width: 120px !important;
+            }
+        }
+        
+        /* Copyright Footer */
+        .copyright-footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(15, 23, 42, 0.95);
+            border-top: 1px solid rgba(6, 182, 212, 0.3);
+            padding: 0.5rem 1rem;
+            text-align: center;
+            font-size: 0.75rem;
+            color: #94a3b8;
+            z-index: 999;
+            backdrop-filter: blur(10px);
+        }
+        
+        .copyright-footer a {
+            color: #06b6d4;
+            text-decoration: none;
+        }
+        
+        .copyright-footer a:hover {
+            color: #22d3ee;
+        }
+        /* ============ END NEW LOGO STYLES ============ */
+        
         /* Headers */
         .main-header {
             font-size: 3rem;
@@ -1897,6 +1940,14 @@ def main():
     apply_custom_styles()
     initialize_session_state()
     
+    # Add copyright footer to all pages
+    st.markdown("""
+    <div class='copyright-footer'>
+        © 2025 Gardel Hiram. All rights reserved. | AI DataChat Proprietary Software | 
+        <a href='mailto:gardelhiram9@gmail.com'>Contact for Licensing</a>
+    </div>
+    """, unsafe_allow_html=True)
+    
     if not st.session_state.authenticated:
         login_page()
         return
@@ -1904,15 +1955,20 @@ def main():
     user_name = st.session_state.get('user_info', {}).get("name", st.session_state.get('username', 'User'))
     st.markdown(f'<p class="user-info">Logged in as: <strong>{user_name}</strong></p>', unsafe_allow_html=True)
     
-    st.markdown('<h1 class="main-header">AI DataChat</h1>', unsafe_allow_html=True)
-    st.markdown('<p class="tagline">Universal Intelligence Through Data</p>', unsafe_allow_html=True)
+    # ============ ADD BRAIN LOGO HERE ============
+    col_logo, col_title = st.columns([1, 4])
+    
+    with col_logo:
+        st.image("assets/logo-brain.png", width=180)
+    
+    with col_title:
+        st.markdown('<h1 class="main-header">AI DataChat</h1>', unsafe_allow_html=True)
+        st.markdown('<p class="tagline">Universal Intelligence Through Data</p>', unsafe_allow_html=True)
+    # ============================================
+    
     st.markdown("---")
     
-    with st.sidebar:
-        st.header("📁 Upload Data")
-        
-        if st.button("🚪 Logout", key="logout_button", use_container_width=True):
-            logout()
+    # Rest of your app code continues...
         
         st.markdown("---")
         
