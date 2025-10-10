@@ -1,31 +1,27 @@
 """
-AI Agent - Azure OpenAI Compatible
+AI Agent - Azure OpenAI Only
+Copyright © 2025 Gardel Hiram. All rights reserved.
 """
 import os
-from openai import AzureOpenAI, OpenAI
+from openai import AzureOpenAI
 import logging
 
 logger = logging.getLogger(__name__)
 
 class AIAgent:
     def __init__(self):
-        """Initialize AI agent with Azure OpenAI or regular OpenAI"""
-        self.use_azure = os.getenv('USE_AZURE_OPENAI', 'false').lower() == 'true'
-        
-        if self.use_azure:
-            # Use Azure OpenAI
+        """Initialize AI agent with Azure OpenAI"""
+        try:
             self.client = AzureOpenAI(
                 api_key=os.getenv('AZURE_OPENAI_KEY'),
                 api_version=os.getenv('AZURE_OPENAI_API_VERSION', '2024-02-15-preview'),
                 azure_endpoint=os.getenv('AZURE_OPENAI_ENDPOINT')
             )
             self.model = os.getenv('AZURE_OPENAI_DEPLOYMENT', 'gpt-35-turbo')
-            logger.info("✅ Using Azure OpenAI")
-        else:
-            # Use regular OpenAI
-            self.client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
-            self.model = "gpt-3.5-turbo"
-            logger.info("✅ Using OpenAI Direct")
+            logger.info("✅ Azure OpenAI initialized successfully")
+        except Exception as e:
+            logger.error(f"❌ Failed to initialize Azure OpenAI: {str(e)}")
+            raise
     
     def analyze_data(self, df, query, data_summary=None):
         """
@@ -55,22 +51,22 @@ User Question: {query}
 
 Please provide a clear, helpful answer based on the data."""
             
-            # Call Azure OpenAI or regular OpenAI (same API!)
+            # Call Azure OpenAI
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt}
                 ],
-                max_tokens=800,
+                max_tokens=500,
                 temperature=0.7
             )
             
             return response.choices[0].message.content
             
         except Exception as e:
-            logger.error(f"Error in AI analysis: {str(e)}")
-            return f"Sorry, I encountered an error: {str(e)}"
+            logger.error(f"❌ Error in AI analysis: {str(e)}")
+            return f"Sorry, I encountered an error: {str(e)}. Please check your Azure OpenAI configuration."
     
     def _prepare_context(self, df, data_summary):
         """Prepare data context for AI"""
