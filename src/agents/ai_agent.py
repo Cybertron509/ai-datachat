@@ -12,19 +12,25 @@ class AIAgent:
     def __init__(self):
         """Initialize AI agent with Azure OpenAI"""
         try:
-            # Get configuration from environment variables
-            api_key = os.getenv('AZURE_OPENAI_API_KEY')
+            # Get configuration from environment variables - matching YOUR Render variable names
+            api_key = os.getenv('AZURE_OPENAI_KEY')
             api_version = os.getenv('AZURE_OPENAI_API_VERSION', '2024-02-15-preview')
             endpoint = os.getenv('AZURE_OPENAI_ENDPOINT')
-            deployment = os.getenv('AZURE_OPENAI_DEPLOYMENT_NAME', 'gpt-35-turbo')
+            deployment = os.getenv('AZURE_OPENAI_DEPLOYMENT', 'gpt-35-turbo')
+            
+            # DEBUG: Print what we found
+            logger.info(f"🔍 API Key exists: {bool(api_key)}")
+            logger.info(f"🔍 Endpoint: {endpoint}")
+            logger.info(f"🔍 Deployment: {deployment}")
+            logger.info(f"🔍 API Version: {api_version}")
             
             # Validate required variables
             if not api_key:
-                raise ValueError("AZURE_OPENAI_API_KEY is not set")
+                raise ValueError("AZURE_OPENAI_KEY is not set")
             if not endpoint:
                 raise ValueError("AZURE_OPENAI_ENDPOINT is not set")
             if not deployment:
-                raise ValueError("AZURE_OPENAI_DEPLOYMENT_NAME is not set")
+                raise ValueError("AZURE_OPENAI_DEPLOYMENT is not set")
             
             logger.info(f"🔧 Initializing Azure OpenAI with deployment: {deployment}")
             
