@@ -1,6 +1,16 @@
 """
 AI DataChat - Complete Application with Subscriptions and Monetization
-Modern UI Version - All Features Preserved
+Modern UI Version - All Features Preserved + Sales Pipeline Analyzer
+
+AI DataChat Proprietary License
+© 2025 Gardel Hiram. All rights reserved.
+
+Permission is hereby granted to view and test this software for evaluation purposes only.
+Any reproduction, modification, distribution, or commercial use of this software,
+in whole or in part, without the express written consent of Gardel Hiram,
+is strictly prohibited.
+
+For licensing inquiries or permission requests, contact: gardelhiram9@gmail.com
 """
 import streamlit as st
 
@@ -69,6 +79,30 @@ def apply_custom_styles():
             text-align: center;
             margin-bottom: 2rem;
             font-weight: 300;
+        }
+        
+        /* Free Pro Banner */
+        .free-pro-banner {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(5, 150, 105, 0.2) 100%);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            border-radius: 12px;
+            padding: 1rem 1.5rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .free-pro-banner-text {
+            color: #10b981;
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+        
+        .free-pro-banner-subtitle {
+            color: #6ee7b7;
+            font-size: 0.9rem;
+            margin-top: 0.25rem;
         }
         
         /* Sidebar Styling */
@@ -281,6 +315,39 @@ def initialize_session_state():
         st.session_state.html_report = None
     if 'show_pricing' not in st.session_state:
         st.session_state.show_pricing = False
+    if 'is_sales_data' not in st.session_state:
+        st.session_state.is_sales_data = False
+
+
+def detect_sales_dataset(df):
+    """Detect if uploaded dataset is sales-related"""
+    if df is None:
+        return False
+    
+    sales_keywords = [
+        'deal', 'stage', 'pipeline', 'close', 'amount', 'value', 'revenue',
+        'opportunity', 'lead', 'prospect', 'win', 'lost', 'owner', 'sales',
+        'customer', 'contract', 'proposal', 'qualified', 'negotiation'
+    ]
+    
+    column_names = [col.lower() for col in df.columns]
+    
+    matches = sum(1 for keyword in sales_keywords for col in column_names if keyword in col)
+    
+    return matches >= 3
+
+
+def show_free_pro_banner():
+    """Display banner announcing free Pro features"""
+    st.markdown("""
+    <div class="free-pro-banner">
+        <div style="font-size: 2rem;">🎉</div>
+        <div style="flex: 1;">
+            <div class="free-pro-banner-text">All Pro Features Currently Free!</div>
+            <div class="free-pro-banner-subtitle">No payment required - Test all premium features including Sales Pipeline Analyzer</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
 
 def login_page():
@@ -353,6 +420,7 @@ def logout():
     st.session_state.narrative_report = None
     st.session_state.html_report = None
     st.session_state.show_pricing = False
+    st.session_state.is_sales_data = False
     st.rerun()
 
 
@@ -381,6 +449,9 @@ def load_data_file(uploaded_file):
         st.session_state.file_info = file_info
         st.session_state.data_summary = data_summary
         
+        # Detect if this is sales data
+        st.session_state.is_sales_data = detect_sales_dataset(df)
+        
         try:
             st.session_state.ai_agent = AIAgent()
         except Exception as e:
@@ -394,6 +465,338 @@ def load_data_file(uploaded_file):
         st.error(f"Error loading file: {str(e)}")
         logger.error(f"Error loading file: {str(e)}")
         return False
+
+
+def sales_pipeline_analyzer():
+    """Sales Pipeline Analyzer interface"""
+    st.header("💰 Sales Pipeline Analyzer")
+    
+    show_free_pro_banner()
+    
+    if st.session_state.df_filtered is None:
+        st.info("Please upload sales data to begin analysis")
+        st.markdown("""
+        ### Expected Data Format
+        Your CSV should include columns such as:
+        - **Deal ID** or **Opportunity ID**
+        - **Stage** (e.g., Qualified, Proposal, Negotiation, Closed)
+        - **Amount** or **Value**
+        - **Close Date**
+        - **Owner** or **Sales Rep**
+        - **Probability** (optional)
+        """)
+        return
+    
+    df = st.session_state.df_filtered
+    
+    # Detect sales-related columns
+    stage_col = None
+    amount_col = None
+    date_col = None
+    owner_col = None
+    
+    for col in df.columns:
+        col_lower = col.lower()
+        if 'stage' in col_lower and stage_col is None:
+            stage_col = col
+        elif any(keyword in col_lower for keyword in ['amount', 'value', 'revenue']) and amount_col is None:
+            amount_col = col
+        elif any(keyword in col_lower for keyword in ['close', 'date']) and date_col is None:
+            date_col = col
+        elif any(keyword in col_lower for keyword in ['owner', 'rep', 'sales']) and owner_col is None:
+            owner_col = col
+    
+    st.subheader("Configure Analysis")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        stage_column = st.selectbox(
+            "Sales Stage Column:",
+            df.columns.tolist(),
+            index=df.columns.tolist().index(stage_col) if stage_col else 0,
+            key="sales_stage_col"
+        )
+        
+        amount_column = st.selectbox(
+            "Deal Amount Column:",
+            df.select_dtypes(include=[np.number]).columns.tolist(),
+            index=df.select_dtypes(include=[np.number]).columns.tolist().index(amount_col) if amount_col and amount_col in df.select_dtypes(include=[np.number]).columns else 0,
+            key="sales_amount_col"
+        )
+    
+    with col2:
+        date_column = st.selectbox(
+            "Close Date Column (optional):",
+            ["None"] + df.columns.tolist(),
+            index=df.columns.tolist().index(date_col) + 1 if date_col else 0,
+            key="sales_date_col"
+        )
+        
+        owner_column = st.selectbox(
+            "Deal Owner Column (optional):",
+            ["None"] + df.columns.tolist(),
+            index=df.columns.tolist().index(owner_col) + 1 if owner_col else 0,
+            key="sales_owner_col"
+        )
+    
+    if st.button("📊 Generate Pipeline Analysis", type="primary", key="generate_sales_analysis"):
+        with st.spinner("Analyzing sales pipeline..."):
+            try:
+                # Calculate pipeline metrics
+                stages = df[stage_column].unique()
+                
+                st.markdown("---")
+                st.subheader("Sales Pipeline Overview")
+                
+                # Key metrics
+                total_deals = len(df)
+                total_value = df[amount_column].sum()
+                
+                closed_stages = [s for s in stages if 'close' in str(s).lower() or 'won' in str(s).lower()]
+                if closed_stages:
+                    closed_df = df[df[stage_column].isin(closed_stages)]
+                    closed_deals = len(closed_df)
+                    closed_value = closed_df[amount_column].sum()
+                    win_rate = (closed_deals / total_deals * 100) if total_deals > 0 else 0
+                else:
+                    closed_deals = 0
+                    closed_value = 0
+                    win_rate = 0
+                
+                col_m1, col_m2, col_m3, col_m4 = st.columns(4)
+                
+                with col_m1:
+                    st.metric("Total Deals", f"{total_deals:,}")
+                with col_m2:
+                    st.metric("Total Pipeline Value", f"${total_value:,.0f}")
+                with col_m3:
+                    st.metric("Closed Value", f"${closed_value:,.0f}")
+                with col_m4:
+                    st.metric("Win Rate", f"{win_rate:.1f}%")
+                
+                st.markdown("---")
+                
+                # Pipeline Funnel Visualization
+                col_viz1, col_viz2 = st.columns([2, 1])
+                
+                with col_viz1:
+                    st.subheader("Pipeline Funnel")
+                    
+                    stage_summary = df.groupby(stage_column)[amount_column].agg(['count', 'sum']).reset_index()
+                    stage_summary.columns = ['Stage', 'Deal Count', 'Total Value']
+                    stage_summary = stage_summary.sort_values('Total Value', ascending=False)
+                    
+                    # Create funnel chart
+                    fig_funnel = go.Figure()
+                    
+                    colors = ['#3b82f6', '#2563eb', '#1e40af', '#1e3a8a', '#172554']
+                    
+                    for idx, row in stage_summary.iterrows():
+                        fig_funnel.add_trace(go.Funnel(
+                            name=row['Stage'],
+                            y=[row['Stage']],
+                            x=[row['Total Value']],
+                            textinfo="value+percent initial",
+                            marker=dict(color=colors[idx % len(colors)])
+                        ))
+                    
+                    fig_funnel.update_layout(
+                        title="Sales Funnel by Value",
+                        plot_bgcolor='rgba(0,0,0,0)',
+                        paper_bgcolor='rgba(0,0,0,0)',
+                        font=dict(color='#e5e7eb'),
+                        height=500
+                    )
+                    
+                    st.plotly_chart(fig_funnel, use_container_width=True)
+                    
+                    # Stage breakdown table
+                    st.dataframe(stage_summary, use_container_width=True, hide_index=True)
+                
+                with col_viz2:
+                    # Trust Score Calculation
+                    st.subheader("Data Quality Score")
+                    
+                    score = 100
+                    issues = []
+                    
+                    # Check for missing dates
+                    if date_column != "None":
+                        missing_dates = df[date_column].isna().sum()
+                        if missing_dates > 0:
+                            penalty = min(20, (missing_dates / len(df)) * 30)
+                            score -= penalty
+                            issues.append(f"Missing close dates: {missing_dates}")
+                    
+                    # Check for missing owners
+                    if owner_column != "None":
+                        missing_owners = df[owner_column].isna().sum()
+                        if missing_owners > 0:
+                            penalty = min(15, (missing_owners / len(df)) * 25)
+                            score -= penalty
+                            issues.append(f"Missing deal owners: {missing_owners}")
+                    
+                    # Check for zero/negative amounts
+                    invalid_amounts = (df[amount_column] <= 0).sum()
+                    if invalid_amounts > 0:
+                        penalty = min(15, (invalid_amounts / len(df)) * 20)
+                        score -= penalty
+                        issues.append(f"Invalid amounts: {invalid_amounts}")
+                    
+                    score = max(0, int(score))
+                    
+                    # Display trust score
+                    if score >= 80:
+                        color = "#10b981"
+                        grade = "Excellent"
+                    elif score >= 60:
+                        color = "#f59e0b"
+                        grade = "Good"
+                    else:
+                        color = "#ef4444"
+                        grade = "Needs Improvement"
+                    
+                    st.markdown(f"""
+                    <div style='text-align: center; padding: 20px; background: linear-gradient(135deg, rgba(6, 182, 212, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%); border-radius: 12px; border: 1px solid rgba(6, 182, 212, 0.3);'>
+                        <h1 style='color: {color}; font-size: 3.5rem; margin: 0;'>{score}</h1>
+                        <p style='font-size: 1rem; color: #9ca3af; margin: 5px 0;'>Data Quality</p>
+                        <p style='font-size: 0.9rem; color: #6b7280;'>{grade}</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    if issues:
+                        st.markdown("---")
+                        st.warning("**Issues Detected:**")
+                        for issue in issues:
+                            st.write(f"• {issue}")
+                    
+                    # Forecast
+                    st.markdown("---")
+                    st.subheader("Forecast")
+                    
+                    open_stages = [s for s in stages if s not in closed_stages]
+                    if open_stages:
+                        forecast_df = df[df[stage_column].isin(open_stages)]
+                        forecast_value = forecast_df[amount_column].sum()
+                        
+                        st.metric("Expected Revenue", f"${forecast_value:,.0f}")
+                        st.caption(f"From {len(forecast_df)} open deals")
+                
+                # Conversion Analysis
+                st.markdown("---")
+                st.subheader("Stage Conversion Analysis")
+                
+                stage_list = stage_summary['Stage'].tolist()
+                
+                if len(stage_list) >= 2:
+                    conversions = []
+                    
+                    for i in range(len(stage_list) - 1):
+                        from_stage = stage_list[i]
+                        to_stage = stage_list[i + 1]
+                        
+                        from_count = stage_summary[stage_summary['Stage'] == from_stage]['Deal Count'].values[0]
+                        to_count = stage_summary[stage_summary['Stage'] == to_stage]['Deal Count'].values[0]
+                        
+                        conversion_rate = (to_count / from_count * 100) if from_count > 0 else 0
+                        
+                        conversions.append({
+                            'From': from_stage,
+                            'To': to_stage,
+                            'Conversion Rate': f"{conversion_rate:.1f}%",
+                            'Deals Lost': from_count - to_count
+                        })
+                    
+                    conversion_df = pd.DataFrame(conversions)
+                    st.dataframe(conversion_df, use_container_width=True, hide_index=True)
+                
+                # Deal Distribution by Owner
+                if owner_column != "None":
+                    st.markdown("---")
+                    st.subheader("Performance by Owner")
+                    
+                    owner_summary = df.groupby(owner_column)[amount_column].agg(['count', 'sum', 'mean']).reset_index()
+                    owner_summary.columns = ['Owner', 'Deal Count', 'Total Value', 'Avg Deal Size']
+                    owner_summary = owner_summary.sort_values('Total Value', ascending=False)
+                    
+                    fig_owner = px.bar(
+                        owner_summary.head(10),
+                        x='Owner',
+                        y='Total Value',
+                        title="Top 10 Performers by Pipeline Value",
+                        color='Total Value',
+                        color_continuous_scale='Teal'
+                    )
+                    
+                    fig_owner.update_layout(
+                        plot_bgcolor='rgba(0,0,0,0)',
+                        paper_bgcolor='rgba(0,0,0,0)',
+                        font=dict(color='#e5e7eb'),
+                        xaxis=dict(gridcolor='rgba(55, 65, 81, 0.3)'),
+                        yaxis=dict(gridcolor='rgba(55, 65, 81, 0.3)'),
+                        height=400
+                    )
+                    
+                    st.plotly_chart(fig_owner, use_container_width=True)
+                
+                # Narrative Report
+                st.markdown("---")
+                st.subheader("💡 Key Insights")
+                
+                insights = []
+                
+                # Win rate insight
+                if win_rate < 15:
+                    insights.append(f"⚠️ Win rate is {win_rate:.1f}%, which is below industry average (typically 15-20%). Consider reviewing qualification criteria.")
+                elif win_rate > 25:
+                    insights.append(f"✅ Win rate of {win_rate:.1f}% is excellent, above industry average!")
+                
+                # Pipeline health
+                if len(stage_list) >= 2:
+                    top_stage_count = stage_summary.iloc[0]['Deal Count']
+                    bottom_stage_count = stage_summary.iloc[-1]['Deal Count']
+                    drop_rate = ((top_stage_count - bottom_stage_count) / top_stage_count * 100)
+                    
+                    if drop_rate > 70:
+                        insights.append(f"⚠️ High drop-off rate of {drop_rate:.1f}% through the pipeline. Focus on conversion optimization.")
+                
+                # Data quality
+                if score < 70:
+                    insights.append(f"⚠️ Data quality score is {score}/100. Clean data will improve forecast accuracy.")
+                
+                for insight in insights:
+                    st.info(insight)
+                
+                # Export
+                st.markdown("---")
+                st.subheader("📥 Export Analysis")
+                
+                export_data = {
+                    'Stage Summary': stage_summary,
+                    'Conversion Analysis': conversion_df if len(stage_list) >= 2 else pd.DataFrame()
+                }
+                
+                if owner_column != "None":
+                    export_data['Owner Performance'] = owner_summary
+                
+                buffer = BytesIO()
+                with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
+                    for sheet_name, data in export_data.items():
+                        if not data.empty:
+                            data.to_excel(writer, index=False, sheet_name=sheet_name)
+                
+                st.download_button(
+                    label="📊 Download Full Analysis (Excel)",
+                    data=buffer.getvalue(),
+                    file_name=f"sales_pipeline_analysis_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    key="download_sales_analysis"
+                )
+                
+            except Exception as e:
+                st.error(f"Error analyzing pipeline: {str(e)}")
+                logger.error(f"Sales analysis error: {str(e)}")
 
 
 def clean_data_interface():
@@ -449,7 +852,7 @@ def clean_data_interface():
                 
                 std = work[outlier_col].std()
                 if std == 0 or np.isnan(std):
-                    st.warning(f"No variability in '{outlier_col}' — no outliers to remove.")
+                    st.warning(f"No variability in '{outlier_col}' – no outliers to remove.")
                 else:
                     z = np.abs((work[outlier_col] - work[outlier_col].mean()) / std)
                     z = np.nan_to_num(z, nan=0.0, posinf=0.0, neginf=0.0)
@@ -464,7 +867,7 @@ def clean_data_interface():
 
 def data_filtering_interface():
     """Advanced data filtering"""
-    st.subheader("Filter Data")
+    st.subheader("🔍 Filter Data")
     
     if st.session_state.df is None:
         return
@@ -761,11 +1164,13 @@ def create_visualizations(df):
 
 
 def export_features():
-    """Export data and reports"""
+    """Export data and reports - ALL FREE"""
     st.subheader("Export Options")
     
     if st.session_state.df_filtered is None:
         return
+    
+    show_free_pro_banner()
     
     col1, col2, col3, col4 = st.columns(4)
     
@@ -804,16 +1209,7 @@ def export_features():
             )
     
     with col4:
-        from src.utils.subscription import SubscriptionManager
-        sub_manager = SubscriptionManager()
-        
-        if not sub_manager.can_access_feature(st.session_state.username, 'reports'):
-            st.info("📄 Reports - Pro Feature")
-            if st.button("Upgrade", key="upgrade_reports_btn"):
-                st.session_state.show_pricing = True
-                st.rerun()
-            return
-        
+        # Reports are now FREE
         if st.button("📄 Generate Report", key="generate_report_button"):
             with st.spinner("Generating executive summary..."):
                 from src.utils.report_generator import ReportGenerator
@@ -869,11 +1265,15 @@ def export_features():
 
 
 def display_data_overview():
-    """Enhanced data overview with visualizations and trust score"""
+    """Enhanced data overview with visualizations and trust score - ALL FREE"""
     if st.session_state.df_filtered is None:
         return
     
     st.header("Data Overview")
+    
+    # Show free banner if sales data detected
+    if st.session_state.is_sales_data:
+        st.info("💰 Sales data detected! Check out the **Sales Pipeline** tab for specialized analysis.")
     
     df = st.session_state.df_filtered
     
@@ -889,66 +1289,59 @@ def display_data_overview():
         missing = df.isnull().sum().sum()
         st.metric("Missing Values", missing)
     
-    from src.utils.subscription import SubscriptionManager
-    sub_manager = SubscriptionManager()
+    # Trust Score is now FREE
+    st.markdown("---")
+    st.subheader("Data Quality & Trust Score")
     
-    if not sub_manager.can_access_feature(st.session_state.username, 'trust_score'):
-        st.markdown("---")
-        st.info("🎯 Data Quality Trust Score is a Pro feature")
-        if st.button("View Pricing", key="upgrade_trust_score"):
-            st.session_state.show_pricing = True
-            st.rerun()
-    else:
-        st.markdown("---")
-        st.subheader("Data Quality & Trust Score")
+    show_free_pro_banner()
+    
+    with st.spinner("Analyzing data quality..."):
+        quality_analyzer = DataQualityAnalyzer(df)
+        quality_report = quality_analyzer.calculate_trust_score()
+    
+    score_col1, score_col2 = st.columns([1, 2])
+    
+    with score_col1:
+        score = quality_report['overall_score']
+        grade = quality_report['grade']
         
-        with st.spinner("Analyzing data quality..."):
-            quality_analyzer = DataQualityAnalyzer(df)
-            quality_report = quality_analyzer.calculate_trust_score()
+        if score >= 80:
+            color = "#10b981"
+        elif score >= 60:
+            color = "#f59e0b"
+        else:
+            color = "#ef4444"
         
-        score_col1, score_col2 = st.columns([1, 2])
+        st.markdown(f"""
+        <div style='text-align: center; padding: 20px; background: linear-gradient(135deg, rgba(6, 182, 212, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%); border-radius: 12px; border: 1px solid rgba(6, 182, 212, 0.3);'>
+            <h1 style='color: {color}; font-size: 3rem; margin: 0;'>{score}</h1>
+            <p style='font-size: 1.2rem; color: #9ca3af; margin: 5px 0;'>Trust Score</p>
+            <p style='font-size: 1rem; color: #6b7280;'>{grade}</p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with score_col2:
+        st.write("**Component Scores:**")
+        for component, comp_score in quality_report['component_scores'].items():
+            st.progress(comp_score / 100, text=f"{component.title()}: {comp_score:.0f}/100")
+    
+    col_issues, col_recommendations = st.columns(2)
+    
+    with col_issues:
+        if quality_report['issues']:
+            st.error("**Critical Issues:**")
+            for issue in quality_report['issues']:
+                st.write(f"- {issue}")
         
-        with score_col1:
-            score = quality_report['overall_score']
-            grade = quality_report['grade']
-            
-            if score >= 80:
-                color = "#10b981"
-            elif score >= 60:
-                color = "#f59e0b"
-            else:
-                color = "#ef4444"
-            
-            st.markdown(f"""
-            <div style='text-align: center; padding: 20px; background: linear-gradient(135deg, rgba(6, 182, 212, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%); border-radius: 12px; border: 1px solid rgba(6, 182, 212, 0.3);'>
-                <h1 style='color: {color}; font-size: 3rem; margin: 0;'>{score}</h1>
-                <p style='font-size: 1.2rem; color: #9ca3af; margin: 5px 0;'>Trust Score</p>
-                <p style='font-size: 1rem; color: #6b7280;'>{grade}</p>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with score_col2:
-            st.write("**Component Scores:**")
-            for component, comp_score in quality_report['component_scores'].items():
-                st.progress(comp_score / 100, text=f"{component.title()}: {comp_score:.0f}/100")
-        
-        col_issues, col_recommendations = st.columns(2)
-        
-        with col_issues:
-            if quality_report['issues']:
-                st.error("**Critical Issues:**")
-                for issue in quality_report['issues']:
-                    st.write(f"- {issue}")
-            
-            if quality_report['warnings']:
-                st.warning("**Warnings:**")
-                for warning in quality_report['warnings']:
-                    st.write(f"- {warning}")
-        
-        with col_recommendations:
-            st.info("**Recommendations:**")
-            for rec in quality_report['recommendations']:
-                st.write(f"- {rec}")
+        if quality_report['warnings']:
+            st.warning("**Warnings:**")
+            for warning in quality_report['warnings']:
+                st.write(f"- {warning}")
+    
+    with col_recommendations:
+        st.info("**Recommendations:**")
+        for rec in quality_report['recommendations']:
+            st.write(f"- {rec}")
     
     st.markdown("---")
     
@@ -1001,21 +1394,10 @@ def display_statistics():
 
 
 def forecasting_interface():
-    """Time-series forecasting interface"""
-    
-    from src.utils.subscription import SubscriptionManager
-    sub_manager = SubscriptionManager()
-    
-    if not sub_manager.can_access_feature(st.session_state.username, 'forecasting'):
-        st.header("⏰ Time-Series Forecasting")
-        st.warning("Time-Series Forecasting is a Pro feature")
-        st.info("Upgrade to Pro to unlock 6-month predictions with confidence intervals.")
-        if st.button("View Pricing", key="upgrade_forecasting"):
-            st.session_state.show_pricing = True
-            st.rerun()
-        return
-    
+    """Time-series forecasting interface - NOW FREE"""
     st.header("⏰ Time-Series Forecasting")
+    
+    show_free_pro_banner()
     
     if st.session_state.df_filtered is None:
         st.info("Please load data first")
@@ -1222,21 +1604,10 @@ def forecasting_interface():
 
 
 def scenario_simulation_interface():
-    """What-if scenario simulation interface"""
+    """What-if scenario simulation interface - NOW FREE"""
+    st.header("🎯 Scenario Simulation")
     
-    from src.utils.subscription import SubscriptionManager
-    sub_manager = SubscriptionManager()
-    
-    if not sub_manager.can_access_feature(st.session_state.username, 'scenarios'):
-        st.header("🎯 Scenario Simulation")
-        st.warning("Scenario Simulation is a Pro feature")
-        st.info("Upgrade to Pro to unlock multi-variable what-if analysis.")
-        if st.button("View Pricing", key="upgrade_scenarios"):
-            st.session_state.show_pricing = True
-            st.rerun()
-        return
-    
-    st.header("🎯 Scenario Simulation - What If Analysis")
+    show_free_pro_banner()
     
     if st.session_state.df_filtered is None:
         st.info("Please load data first")
@@ -1390,8 +1761,10 @@ def scenario_simulation_interface():
 
 
 def chat_interface():
-    """AI chat interface with per-user rate limiting"""
+    """AI chat interface - NOW UNLIMITED AND FREE"""
     st.header("💬 Chat with Your Data")
+    
+    show_free_pro_banner()
     
     if st.session_state.df_filtered is None:
         st.info("Please load data first")
@@ -1401,71 +1774,41 @@ def chat_interface():
         st.warning("AI Chat is not available. Please check your API configuration.")
         return
     
-    from src.utils.subscription import SubscriptionManager
+    st.success("✨ Unlimited AI questions - Free for testing!")
     
-    try:
-        sub_manager = SubscriptionManager()
-        username = st.session_state.username
+    for message in st.session_state.chat_history:
+        with st.chat_message(message["role"]):
+            st.write(message["content"])
+    
+    if prompt := st.chat_input("Ask a question about your data..."):
+        st.session_state.chat_history.append({"role": "user", "content": prompt})
         
-        remaining = sub_manager.get_remaining_ai_questions(username)
-        subscription = sub_manager.get_user_subscription(username)
-        tier = subscription.get('tier', 'free')
+        with st.chat_message("user"):
+            st.write(prompt)
         
-        if tier == 'free':
-            if remaining > 0:
-                st.info(f"You have {remaining} free AI question{'s' if remaining != 1 else ''} remaining")
-            else:
-                st.error("You've used all your free AI questions")
-                st.warning("Upgrade to Pro for unlimited AI chat!")
-                if st.button("Upgrade to Pro", key="upgrade_chat", type="primary"):
-                    st.session_state.show_pricing = True
+        with st.chat_message("assistant"):
+            with st.spinner("Thinking..."):
+                try:
+                    response = st.session_state.ai_agent.analyze_data(
+                        st.session_state.df_filtered,
+                        prompt,
+                        st.session_state.data_summary
+                    )
+                    st.write(response)
+                    st.session_state.chat_history.append({"role": "assistant", "content": response})
                     st.rerun()
-                return
-        else:
-            st.success("Pro Plan - Unlimited AI questions")
-        
-        for message in st.session_state.chat_history:
-            with st.chat_message(message["role"]):
-                st.write(message["content"])
-        
-        if remaining > 0:
-            if prompt := st.chat_input("Ask a question about your data..."):
-                st.session_state.chat_history.append({"role": "user", "content": prompt})
-                
-                with st.chat_message("user"):
-                    st.write(prompt)
-                
-                with st.chat_message("assistant"):
-                    with st.spinner("Thinking..."):
-                        try:
-                            response = st.session_state.ai_agent.analyze_data(
-                                st.session_state.df_filtered,
-                                prompt,
-                                st.session_state.data_summary
-                            )
-                            st.write(response)
-                            st.session_state.chat_history.append({"role": "assistant", "content": response})
-                            
-                            sub_manager.increment_ai_questions(username)
-                            new_remaining = sub_manager.get_remaining_ai_questions(username)
-                            
-                            if new_remaining == 0 and tier == 'free':
-                                st.warning("That was your last free question!")
-                            
-                            st.rerun()
-                            
-                        except Exception as e:
-                            error_msg = f"Error: {str(e)}"
-                            st.error(error_msg)
-                            logger.error(error_msg)
-    
-    except Exception as e:
-        st.error(f"Error initializing chat: {str(e)}")
+                    
+                except Exception as e:
+                    error_msg = f"Error: {str(e)}"
+                    st.error(error_msg)
+                    logger.error(error_msg)
 
 
 def subscription_interface():
     """Display subscription management interface"""
     st.subheader("💳 Subscription Management")
+    
+    show_free_pro_banner()
     
     username = st.session_state.get('username', '')
     
@@ -1480,10 +1823,6 @@ def subscription_interface():
     current_tier = subscription.get('tier', 'free')
     
     st.markdown(f"**Current Plan:** {sub_manager.TIERS[current_tier]['name']}")
-    
-    if current_tier == 'free':
-        remaining = sub_manager.get_remaining_ai_questions(username)
-        st.progress(remaining / 2, text=f"AI Questions: {remaining}/2 remaining")
     
     st.markdown("---")
     
@@ -1513,7 +1852,10 @@ def subscription_interface():
         st.write("")
         for feature in sub_manager.TIERS['pro']['features']:
             st.write(f"✓ {feature}")
+        st.write("✓ Sales Pipeline Analyzer")
         st.write("")
+        
+        st.info("🎉 All Pro features are currently FREE for testing!")
         
         if current_tier == 'free':
             if stripe_handler.is_configured():
@@ -1522,46 +1864,33 @@ def subscription_interface():
                 if not user_email:
                     user_email = st.text_input("Email for billing:", key="billing_email")
                 
-                if user_email and st.button("Subscribe Now", key="subscribe_pro_button", type="primary"):
-                    price_id = os.getenv('STRIPE_PRO_PRICE_ID', '')
-                    
-                    if not price_id or price_id == 'price_xxxxx':
-                        st.error("Stripe Price ID not configured. Please contact support.")
-                    else:
-                        checkout_url = stripe_handler.create_checkout_session(
-                            username,
-                            user_email,
-                            price_id
-                        )
-                        
-                        if checkout_url:
-                            st.markdown(stripe_handler.get_checkout_button_html(checkout_url), unsafe_allow_html=True)
-                            st.info("Click the button above to complete your subscription.")
+                if user_email and st.button("Subscribe Now (Coming Soon)", key="subscribe_pro_button", type="primary", disabled=True):
+                    st.info("Payment processing will be enabled after testing period")
             else:
-                st.warning("Payment processing is currently in setup mode.")
-                st.info("Contact support to upgrade to Pro")
+                st.info("Test all Pro features now - No payment required!")
         else:
             st.success("✓ Current Plan")
     
     st.markdown("---")
     st.subheader("Feature Access")
     
-    features_status = {
-        'Time-Series Forecasting': sub_manager.can_access_feature(username, 'forecasting'),
-        'Scenario Simulation': sub_manager.can_access_feature(username, 'scenarios'),
-        'Data Quality Trust Score': sub_manager.can_access_feature(username, 'trust_score'),
-        'Narrative Reports': sub_manager.can_access_feature(username, 'reports'),
-    }
+    st.success("✅ All features are currently FREE for testing!")
     
-    for feature, has_access in features_status.items():
+    features_list = [
+        'Time-Series Forecasting',
+        'Scenario Simulation',
+        'Data Quality Trust Score',
+        'Narrative Reports',
+        'Unlimited AI Chat',
+        'Sales Pipeline Analyzer'
+    ]
+    
+    for feature in features_list:
         col_a, col_b = st.columns([3, 1])
         with col_a:
             st.write(feature)
         with col_b:
-            if has_access:
-                st.success("Enabled")
-            else:
-                st.error("Pro Only")
+            st.success("Free")
 
 
 def main():
@@ -1598,6 +1927,8 @@ def main():
                 with st.spinner("Loading data..."):
                     if load_data_file(uploaded_file):
                         st.success("✅ Data loaded successfully!")
+                        if st.session_state.is_sales_data:
+                            st.info("💰 Sales data detected!")
         
         if st.session_state.df is not None:
             st.markdown("---")
@@ -1607,6 +1938,11 @@ def main():
             st.write(f"**Size:** {st.session_state.file_info['size_mb']} MB")
             st.write(f"**Rows:** {len(st.session_state.df):,}")
             
+            if st.session_state.is_sales_data:
+                st.markdown("---")
+                st.success("💰 Sales Data Detected!")
+                st.caption("Check the Sales Pipeline tab")
+            
             st.markdown("---")
             data_filtering_interface()
             
@@ -1615,8 +1951,9 @@ def main():
                 st.rerun()
             
             if st.button("🗑️ Clear Data", key="clear_data_button", use_container_width=True):
-                for key in ['df', 'df_filtered', 'file_info', 'data_summary', 'ai_agent', 'chat_history', 'narrative_report', 'html_report']:
+                for key in ['df', 'df_filtered', 'file_info', 'data_summary', 'ai_agent', 'chat_history', 'narrative_report', 'html_report', 'is_sales_data']:
                     st.session_state[key] = None if key != 'chat_history' else []
+                st.session_state.is_sales_data = False
                 st.rerun()
     
     if st.session_state.df is None:
@@ -1633,6 +1970,8 @@ def main():
         </div>
         """, unsafe_allow_html=True)
         
+        show_free_pro_banner()
+        
         col1, col2 = st.columns(2)
         
         with col1:
@@ -1644,32 +1983,49 @@ def main():
                     <li>Interactive visualizations and statistics</li>
                     <li>Data cleaning and filtering</li>
                     <li>AI-powered chat with your data</li>
+                    <li>Sales Pipeline Analysis</li>
                 </ul>
             </div>
             """, unsafe_allow_html=True)
         
         with col2:
             st.markdown("""
-            <div style='background: linear-gradient(135deg, rgba(245, 158, 11, 0.2) 0%, rgba(217, 119, 6, 0.2) 100%); padding: 2rem; border-radius: 12px; border: 1px solid rgba(245, 158, 11, 0.4);'>
-                <h3 style='color: #f59e0b;'>🚀 Pro Features:</h3>
+            <div style='background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(5, 150, 105, 0.2) 100%); padding: 2rem; border-radius: 12px; border: 1px solid rgba(16, 185, 129, 0.4);'>
+                <h3 style='color: #10b981;'>🎉 All Features FREE:</h3>
                 <ul style='color: #d1d5db;'>
                     <li>Time-series forecasting (6-month predictions)</li>
                     <li>Scenario simulation (what-if analysis)</li>
                     <li>Data quality trust scores</li>
                     <li>Automated narrative reports</li>
                     <li>Unlimited AI questions</li>
+                    <li>Sales Pipeline Analyzer</li>
                 </ul>
             </div>
             """, unsafe_allow_html=True)
     else:
-        tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
-            "📊 Overview", 
-            "📈 Statistics", 
-            "⏰ Forecasting", 
-            "🎯 Scenarios", 
-            "💬 Chat", 
-            "💳 Subscription"
-        ])
+        # Dynamic tabs based on sales data detection
+        if st.session_state.is_sales_data:
+            tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
+                "📊 Overview", 
+                "📈 Statistics", 
+                "💰 Sales Pipeline",
+                "⏰ Forecasting", 
+                "🎯 Scenarios", 
+                "💬 Chat", 
+                "💳 Subscription"
+            ])
+            
+            with tab3:
+                sales_pipeline_analyzer()
+        else:
+            tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+                "📊 Overview", 
+                "📈 Statistics", 
+                "⏰ Forecasting", 
+                "🎯 Scenarios", 
+                "💬 Chat", 
+                "💳 Subscription"
+            ])
         
         with tab1:
             display_data_overview()
@@ -1677,16 +2033,16 @@ def main():
         with tab2:
             display_statistics()
         
-        with tab3:
+        with tab3 if not st.session_state.is_sales_data else tab4:
             forecasting_interface()
         
-        with tab4:
+        with tab4 if not st.session_state.is_sales_data else tab5:
             scenario_simulation_interface()
         
-        with tab5:
+        with tab5 if not st.session_state.is_sales_data else tab6:
             chat_interface()
         
-        with tab6:
+        with tab6 if not st.session_state.is_sales_data else tab7:
             subscription_interface()
 
 

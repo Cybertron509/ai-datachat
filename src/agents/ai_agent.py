@@ -1,91 +1,90 @@
-"""AI Agent for data analysis using OpenAI"""
-from openai import OpenAI
-import pandas as pd
-import json
-from typing import Dict, Any, List, Optional
+"""
+AI Agent - Azure OpenAI Compatible
+"""
+import os
+from openai import AzureOpenAI, OpenAI
 import logging
-from config import settings
 
 logger = logging.getLogger(__name__)
 
 class AIAgent:
-    """AI agent for analyzing data and answering questions"""
-    
-    def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None):
-        """Initialize AI Agent"""
-        self.api_key = api_key or settings.openai_api_key
-        self.model = model or settings.openai_model
+    def __init__(self):
+        """Initialize AI agent with Azure OpenAI or regular OpenAI"""
+        self.use_azure = os.getenv('USE_AZURE_OPENAI', 'false').lower() == 'true'
         
-        if not self.api_key:
-            raise ValueError("OpenAI API key is required")
-        
-        self.client = OpenAI(api_key=self.api_key)
-        self.conversation_history: List[Dict[str, str]] = []
-        
-        logger.info(f"Initialized AI Agent with model: {self.model}")
+        if self.use_azure:
+            # Use Azure OpenAI
+            self.client = AzureOpenAI(
+                api_key=os.getenv('AZURE_OPENAI_KEY'),
+                api_version=os.getenv('AZURE_OPENAI_API_VERSION', '2024-02-15-preview'),
+                azure_endpoint=os.getenv('AZURE_OPENAI_ENDPOINT')
+            )
+            self.model = os.getenv('AZURE_OPENAI_DEPLOYMENT', 'gpt-35-turbo')
+            logger.info("✅ Using Azure OpenAI")
+        else:
+            # Use regular OpenAI
+            self.client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+            self.model = "gpt-3.5-turbo"
+            logger.info("✅ Using OpenAI Direct")
     
-    def _create_system_prompt(self, df: pd.DataFrame, data_summary: Dict[str, Any]) -> str:
-        """Create system prompt with data context"""
-        prompt = f"""You are an expert data analyst assistant. You help users understand and analyze their data.
-
-**Dataset Information:**
-- Rows: {data_summary['shape']['rows']}
-- Columns: {data_summary['shape']['columns']}
-- Column names: {', '.join(data_summary['columns'])}
-
-**Column Data Types:**
-{json.dumps(data_summary['dtypes'], indent=2)}
-
-**Guidelines:**
-1. Provide clear, concise answers about the data
-2. When asked to analyze, provide specific insights with numbers
-3. Suggest visualizations when appropriate
-4. If calculation is needed, explain the approach
-5. Be honest if the data doesn't contain information to answer the question
-6. Format responses in a readable way with proper structure
-
-You have access to the complete dataset and can reference any columns or statistics about the data.
-"""
-        return prompt
-    
-    def analyze_data(self, df: pd.DataFrame, question: str, data_summary: Dict[str, Any]) -> str:
-        """Analyze data and answer a question"""
+    def analyze_data(self, df, query, data_summary=None):
+        """
+        Analyze data and respond to user queries
+        
+        Args:
+            df: pandas DataFrame
+            query: user's question
+            data_summary: optional summary statistics
+        
+        Returns:
+            str: AI response
+        """
         try:
-            system_prompt = self._create_system_prompt(df, data_summary)
-            data_sample = df.head(5).to_string()
-            context_message = f"Here's a sample of the data:\n{data_sample}"
+            # Prepare context about the data
+            context = self._prepare_context(df, data_summary)
             
-            messages = [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": context_message}
-            ]
+            # Create the prompt
+            system_prompt = """You are an expert data analyst assistant. 
+            Analyze the provided data and answer questions clearly and concisely.
+            Provide actionable insights when relevant."""
             
-            messages.extend(self.conversation_history)
-            messages.append({"role": "user", "content": question})
+            user_prompt = f"""Data Context:
+{context}
+
+User Question: {query}
+
+Please provide a clear, helpful answer based on the data."""
             
+            # Call Azure OpenAI or regular OpenAI (same API!)
             response = self.client.chat.completions.create(
                 model=self.model,
-                messages=messages,
-                temperature=0.7,
-                max_tokens=1000
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                max_tokens=800,
+                temperature=0.7
             )
             
-            answer = response.choices[0].message.content
-            
-            self.conversation_history.append({"role": "user", "content": question})
-            self.conversation_history.append({"role": "assistant", "content": answer})
-            
-            if len(self.conversation_history) > 10:
-                self.conversation_history = self.conversation_history[-10:]
-            
-            logger.info(f"Successfully generated response for question: {question[:50]}...")
-            return answer
+            return response.choices[0].message.content
             
         except Exception as e:
-            logger.error(f"Error generating AI response: {str(e)}")
-            raise
+            logger.error(f"Error in AI analysis: {str(e)}")
+            return f"Sorry, I encountered an error: {str(e)}"
     
-    def reset_conversation(self):
-        """Clear conversation history"""
-        self.conversation_history = []
-        logger.info("Conversation history reset")
+    def _prepare_context(self, df, data_summary):
+        """Prepare data context for AI"""
+        context = f"""
+Dataset Overview:
+- Rows: {len(df):,}
+- Columns: {len(df.columns)}
+- Column Names: {', '.join(df.columns.tolist()[:20])}
+"""
+        
+        if data_summary:
+            context += f"\nData Summary:\n{str(data_summary)[:500]}"
+        
+        # Add sample data
+        context += f"\n\nSample Data (first 3 rows):\n{df.head(3).to_string()}"
+        
+        return context

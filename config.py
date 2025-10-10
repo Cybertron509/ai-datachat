@@ -1,28 +1,31 @@
 """
-Configuration settings for AI DataChat
+Configuration for AI DataChat
 """
-from dotenv import load_dotenv
 import os
+from dotenv import load_dotenv
 
-# Load environment variables
 load_dotenv()
 
-
 class Settings:
-    """Application settings"""
+    # App settings
+    APP_NAME = "AI DataChat"
+    VERSION = "1.0.0"
     
-    # OpenAI Configuration
-    openai_api_key: str = os.getenv("OPENAI_API_KEY", "")
-    openai_model: str = os.getenv("OPENAI_MODEL", "gpt-3.5-turbo")
+    # Azure OpenAI settings
+    USE_AZURE_OPENAI = os.getenv('USE_AZURE_OPENAI', 'false').lower() == 'true'
+    AZURE_OPENAI_KEY = os.getenv('AZURE_OPENAI_KEY')
+    AZURE_OPENAI_ENDPOINT = os.getenv('AZURE_OPENAI_ENDPOINT')
+    AZURE_OPENAI_DEPLOYMENT = os.getenv('AZURE_OPENAI_DEPLOYMENT', 'gpt-35-turbo')
+    AZURE_OPENAI_API_VERSION = os.getenv('AZURE_OPENAI_API_VERSION', '2024-02-15-preview')
     
-    # App Configuration
-    app_name: str = os.getenv("APP_NAME", "AI DataChat")
-    debug: bool = os.getenv("DEBUG", "False").lower() == "true"
+    # Regular OpenAI (backup)
+    OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
     
-    # Data Processing
-    max_file_size_mb: int = int(os.getenv("MAX_FILE_SIZE_MB", "2000"))
-    max_rows_display: int = int(os.getenv("MAX_ROWS_DISPLAY", "1000"))
-    chunk_size: int = int(os.getenv("CHUNK_SIZE", "5000"))
-
+    # Stripe settings
+    STRIPE_SECRET_KEY = os.getenv('STRIPE_SECRET_KEY')
+    STRIPE_PUBLISHABLE_KEY = os.getenv('STRIPE_PUBLISHABLE_KEY')
+    
+    # Other settings
+    SECRET_KEY = os.getenv('SECRET_KEY', 'your-secret-key-here')
 
 settings = Settings()
