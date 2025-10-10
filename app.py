@@ -394,10 +394,10 @@ def show_free_pro_banner():
 def login_page():
     """Display login page with modern styling"""
     
-    # Add brain logo to login page - centered
-    col_logo_left, col_logo_center, col_logo_right = st.columns([1, 2, 1])
+    # Add small brain logo to login page - centered and icon-sized
+    col_logo_left, col_logo_center, col_logo_right = st.columns([2, 1, 2])
     with col_logo_center:
-        st.image("assets/logo-brain.png", use_container_width=True)
+        st.image("assets/logo-icon.png", width=150)
     
     st.markdown('<h1 class="main-header">AI DataChat</h1>', unsafe_allow_html=True)
     st.markdown('<p class="tagline">Universal Intelligence Through Data</p>', unsafe_allow_html=True)
