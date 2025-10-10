@@ -52,6 +52,12 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # =========================================================
+# Logo sizes (single source of truth)
+# =========================================================
+ICON_LOGO_W = 140           # sidebar + login
+HERO_LOGO_W = 180           # header (slightly bigger than icon)
+
+# =========================================================
 # Logo helpers (robust, crisp, path-safe)
 # =========================================================
 def get_assets_dir() -> Path:
@@ -61,7 +67,7 @@ def get_logo_paths():
     assets = get_assets_dir()
     return {
         "icon": assets / "logo-icon.png",   # small mark for login/sidebar
-        "hero": assets / "logo-brain.png",  # banner/hero graphic
+        "hero": assets / "logo-brain.png",  # header graphic
     }
 
 def load_image_safe(img_path: Path):
@@ -78,7 +84,7 @@ def _img_to_base64(pil_img: Image.Image) -> str:
     pil_img.save(buf, format="PNG")
     return base64.b64encode(buf.getvalue()).decode("utf-8")
 
-def render_logo(kind: str = "hero", max_width_px: int = 920, center: bool = True, margin: str = "0.75rem 0 0.5rem"):
+def render_logo(kind: str = "hero", max_width_px: int = HERO_LOGO_W, center: bool = True, margin: str = "0.5rem 0"):
     """Render PNG logos with predictable sizing and good spacing."""
     logos = get_logo_paths()
     img_path = logos.get(kind)
@@ -113,64 +119,104 @@ def render_logo(kind: str = "hero", max_width_px: int = 920, center: bool = True
 # Styles
 # =========================================================
 def apply_custom_styles():
-    """Apply modern dark theme with glassmorphism + logo tweaks"""
+    """Apply modern dark theme with glassmorphism + layout polish"""
     st.markdown("""
     <style>
+        /* Tighten the main content width & padding for better readability */
+        .block-container {
+            max-width: 1200px;
+            padding-top: 1rem;
+            padding-bottom: 5rem; /* leave room for fixed footer */
+        }
+
         /* Main App Background */
         .stApp {
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+            background: radial-gradient(1200px 600px at 40% -10%, rgba(3,105,161,0.22), transparent),
+                        linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
         }
+
         /* Hide default menu/footer */
         #MainMenu {visibility: hidden;}
         footer {visibility: hidden;}
 
+        /* Header bar */
+        .topbar {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(6, 182, 212, 0.30);
+            border-radius: 14px;
+            padding: 10px 16px;
+            box-shadow: 0 6px 24px rgba(2, 132, 199, 0.15);
+            backdrop-filter: blur(10px);
+        }
+        .topbar-title {
+            font-size: 1.8rem;
+            line-height: 1.15;
+            font-weight: 300;
+            margin: 0;
+            background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.02em;
+        }
+        .topbar-tagline {
+            margin: 2px 0 0;
+            color: #93c5fd;
+            font-size: 0.95rem;
+            font-weight: 300;
+        }
+
         /* Logo subtle shadow */
         .logo-wrap img {
-            filter: drop-shadow(0 6px 18px rgba(0,0,0,.25));
-        }
-        @media (min-width: 1200px) {
-          .logo-wrap { margin-top: 0.25rem !important; }
+            filter: drop-shadow(0 4px 12px rgba(0,0,0,.20));
         }
 
         /* Copyright Footer */
         .copyright-footer {
             position: fixed; bottom: 0; left: 0; right: 0;
-            background: rgba(15, 23, 42, 0.95);
-            border-top: 1px solid rgba(6, 182, 212, 0.3);
-            padding: 0.5rem 1rem; text-align: center;
+            background: rgba(15, 23, 42, 0.92);
+            border-top: 1px solid rgba(6, 182, 212, 0.28);
+            padding: 8px 12px; text-align: center;
             font-size: 0.75rem; color: #94a3b8; z-index: 999;
-            backdrop-filter: blur(10px);
+            backdrop-filter: blur(8px);
         }
         .copyright-footer a { color: #06b6d4; text-decoration: none; }
         .copyright-footer a:hover { color: #22d3ee; }
 
-        /* Headers */
-        .main-header {
-            font-size: 3rem; font-weight: 300;
-            background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-            text-align: center; margin-bottom: 0.5rem; letter-spacing: -0.02em;
+        /* Section cards */
+        .glass-card {
+            background: rgba(31, 41, 55, 0.55);
+            border: 1px solid rgba(55, 65, 81, 0.45);
+            border-radius: 14px;
+            padding: 16px;
+            box-shadow: 0 6px 24px rgba(2, 132, 199, 0.12);
+            backdrop-filter: blur(10px);
         }
-        .tagline {
-            font-size: 1.3rem; color: #94a3b8; text-align: center;
-            margin-bottom: 2rem; font-weight: 300;
+
+        /* Subheaders */
+        .section-title {
+            margin: 0 0 8px;
+            font-weight: 300 !important;
+            color: #e5e7eb !important;
         }
 
         /* Free Pro Banner */
         .free-pro-banner {
             background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(5, 150, 105, 0.2) 100%);
             border: 1px solid rgba(16, 185, 129, 0.3);
-            border-radius: 12px; padding: 1rem 1.5rem; margin-bottom: 1.5rem;
-            display: flex; align-items: center; gap: 1rem;
+            border-radius: 12px; padding: 0.75rem 1rem; margin-bottom: 1rem;
+            display: flex; align-items: center; gap: 0.75rem;
         }
-        .free-pro-banner-text { color: #10b981; font-weight: 600; font-size: 1.1rem; }
-        .free-pro-banner-subtitle { color: #6ee7b7; font-size: 0.9rem; margin-top: 0.25rem; }
+        .free-pro-banner-text { color: #10b981; font-weight: 600; font-size: 1rem; }
+        .free-pro-banner-subtitle { color: #6ee7b7; font-size: 0.85rem; margin-top: 0.1rem; }
 
         /* Sidebar */
         [data-testid="stSidebar"] {
-            background: rgba(15, 23, 42, 0.95);
-            border-right: 1px solid rgba(6, 182, 212, 0.3);
-            backdrop-filter: blur(10px);
+            background: rgba(15, 23, 42, 0.92);
+            border-right: 1px solid rgba(6, 182, 212, 0.28);
+            backdrop-filter: blur(8px);
         }
         [data-testid="stSidebar"] .element-container { color: #e5e7eb; }
 
@@ -178,64 +224,56 @@ def apply_custom_styles():
         .stButton > button {
             background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
             color: white; border: none; border-radius: 12px; font-weight: 600;
-            padding: 0.75rem 2rem; transition: all 0.3s ease;
+            padding: 0.6rem 1.2rem; transition: all 0.3s ease;
             box-shadow: 0 4px 12px rgba(6, 182, 212, 0.3);
         }
         .stButton > button:hover {
             background: linear-gradient(135deg, #0891b2 0%, #0e7490 100%);
-            transform: translateY(-2px);
+            transform: translateY(-1px);
             box-shadow: 0 6px 20px rgba(6, 182, 212, 0.4);
         }
 
         /* Tabs */
         .stTabs [data-baseweb="tab-list"] {
-            gap: 8px; background: rgba(31, 41, 55, 0.5); padding: 0.5rem;
+            gap: 8px; background: rgba(31, 41, 55, 0.5); padding: 6px;
             border-radius: 12px; backdrop-filter: blur(10px);
-            border: 1px solid rgba(55, 65, 81, 0.5);
+            border: 1px solid rgba(55, 65, 81, 0.45);
         }
         .stTabs [data-baseweb="tab"] {
-            height: 50px; border-radius: 8px; font-weight: 600;
-            color: #9ca3af !important; font-size: 1rem !important; background: transparent;
-            transition: all 0.3s ease;
+            height: 46px; border-radius: 8px; font-weight: 600;
+            color: #9ca3af !important; font-size: 0.95rem !important; background: transparent;
+            transition: all 0.25s ease;
         }
         .stTabs [data-baseweb="tab"]:hover {
-            background: rgba(6, 182, 212, 0.1); color: #22d3ee !important;
+            background: rgba(6, 182, 212, 0.08); color: #22d3ee !important;
         }
         .stTabs [aria-selected="true"] {
             background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%) !important;
-            color: white !important; box-shadow: 0 4px 12px rgba(6, 182, 212, 0.3);
+            color: white !important; box-shadow: 0 4px 12px rgba(6, 182, 212, 0.28);
         }
-        .stTabs [aria-selected="true"] button { color: white !important; }
 
         /* Metrics */
         [data-testid="stMetric"] {
             background: linear-gradient(135deg, rgba(6, 182, 212, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%);
-            padding: 1.5rem; border-radius: 12px; border: 1px solid rgba(6, 182, 212, 0.3);
-            backdrop-filter: blur(10px);
+            padding: 1rem; border-radius: 12px; border: 1px solid rgba(6, 182, 212, 0.3);
+            backdrop-filter: blur(8px);
         }
-        [data-testid="stMetricLabel"] { color: #9ca3af !important; font-size: 0.875rem; font-weight: 400; }
-        [data-testid="stMetricValue"] { font-size: 2rem; font-weight: 300; color: #22d3ee !important; }
+        [data-testid="stMetricLabel"] { color: #9ca3af !important; font-size: 0.85rem; font-weight: 400; }
+        [data-testid="stMetricValue"] { font-size: 1.6rem; font-weight: 300; color: #22d3ee !important; }
 
         /* User Info Badge */
         .user-info {
-            text-align: right; padding: 0.75rem 1rem;
-            background: linear-gradient(135deg, rgba(6, 182, 212, 0.2) 0%, rgba(59, 130, 246, 0.2) 100%);
-            color: #e5e7eb; border-radius: 12px; margin-bottom: 1rem;
-            box-shadow: 0 4px 12px rgba(6, 182, 212, 0.2); border: 1px solid rgba(6, 182, 212, 0.3);
-            backdrop-filter: blur(10px);
-        }
-
-        /* Pro badge */
-        .pro-badge {
-            display: inline-block; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-            color: white; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.75rem; font-weight: 700;
-            margin-left: 0.5rem; box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
+            text-align: right; padding: 0.6rem 0.9rem;
+            background: linear-gradient(135deg, rgba(6, 182, 212, 0.18) 0%, rgba(59, 130, 246, 0.18) 100%);
+            color: #e5e7eb; border-radius: 12px; margin-bottom: 0.8rem;
+            box-shadow: 0 4px 12px rgba(6, 182, 212, 0.18); border: 1px solid rgba(6, 182, 212, 0.28);
+            backdrop-filter: blur(8px);
         }
 
         /* File Uploader */
         [data-testid="stFileUploader"] {
-            background: rgba(31, 41, 55, 0.5); border: 2px dashed rgba(6, 182, 212, 0.3);
-            border-radius: 12px; padding: 2rem; backdrop-filter: blur(10px);
+            background: rgba(31, 41, 55, 0.5); border: 2px dashed rgba(6, 182, 212, 0.28);
+            border-radius: 12px; padding: 1.2rem; backdrop-filter: blur(8px);
         }
 
         /* Inputs */
@@ -247,41 +285,23 @@ def apply_custom_styles():
 
         /* Dataframe */
         [data-testid="stDataFrame"] {
-            background: rgba(31, 41, 55, 0.5); border-radius: 12px; border: 1px solid rgba(55, 65, 81, 0.5);
+            background: rgba(31, 41, 55, 0.5); border-radius: 12px; border: 1px solid rgba(55, 65, 81, 0.45);
         }
 
         /* Expander */
         .streamlit-expanderHeader {
             background: rgba(31, 41, 55, 0.5); border-radius: 8px; color: #e5e7eb !important;
-            border: 1px solid rgba(55, 65, 81, 0.5);
+            border: 1px solid rgba(55, 65, 81, 0.45);
         }
 
         /* Text and Labels */
         p, label, .stMarkdown { color: #d1d5db !important; }
         h1, h2, h3, h4 { color: #e5e7eb !important; font-weight: 300 !important; }
 
-        /* Progress bars */
-        .stProgress > div > div > div {
-            background: linear-gradient(90deg, #06b6d4 0%, #3b82f6 100%);
-        }
-
-        /* Alerts */
-        .stAlert {
-            background: rgba(31, 41, 55, 0.8);
-            border-radius: 12px; border-left: 4px solid; backdrop-filter: blur(10px);
-        }
-
-        /* Chat messages */
-        [data-testid="stChatMessage"] {
-            background: rgba(31, 41, 55, 0.5);
-            border-radius: 12px; border: 1px solid rgba(55, 65, 81, 0.5);
-            backdrop-filter: blur(10px);
-        }
-
         /* Plotly container */
         .js-plotly-plot {
             border-radius: 12px; background: rgba(31, 41, 55, 0.5);
-            padding: 1rem; border: 1px solid rgba(55, 65, 81, 0.5);
+            padding: 1rem; border: 1px solid rgba(55, 65, 81, 0.45);
         }
     </style>
     """, unsafe_allow_html=True)
@@ -335,7 +355,7 @@ def detect_sales_dataset(df: pd.DataFrame) -> bool:
 def show_free_pro_banner():
     st.markdown("""
     <div class="free-pro-banner">
-        <div style="font-size: 2rem;">🎉</div>
+        <div style="font-size: 1.4rem;">🎉</div>
         <div style="flex: 1;">
             <div class="free-pro-banner-text">All Pro Features Currently Free!</div>
             <div class="free-pro-banner-subtitle">No payment required - Test all premium features including Sales Pipeline Analyzer</div>
@@ -347,54 +367,60 @@ def show_free_pro_banner():
 # Auth / Login
 # =========================================================
 def login_page():
-    """Display login page with modern styling + icon logo"""
-    render_logo(kind="icon", max_width_px=150, center=True, margin="0.5rem 0 0.5rem")
-    st.markdown('<h1 class="main-header">AI DataChat</h1>', unsafe_allow_html=True)
-    st.markdown('<p class="tagline">Universal Intelligence Through Data</p>', unsafe_allow_html=True)
-    st.markdown("---")
+    """Display login page with small icon logo"""
+    render_logo(kind="icon", max_width_px=ICON_LOGO_W, center=True, margin="0.5rem 0 0.25rem")
+    st.markdown(
+        '<div class="topbar" style="margin-bottom:12px;justify-content:center;">'
+        '<div style="text-align:center;">'
+        '<div class="topbar-title">AI DataChat</div>'
+        '<div class="topbar-tagline">Universal Intelligence Through Data</div>'
+        '</div></div>',
+        unsafe_allow_html=True
+    )
 
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        st.subheader("Authentication")
-        auth_manager = AuthManager()
+    with st.container():
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            st.subheader("Authentication")
+            auth_manager = AuthManager()
 
-        tab1, tab2 = st.tabs(["Login", "Register"])
-        with tab1:
-            with st.form("login_form"):
-                username = st.text_input("Username")
-                password = st.text_input("Password", type="password")
-                submit = st.form_submit_button("Login", use_container_width=True)
-                if submit:
-                    if username and password:
-                        if auth_manager.authenticate(username, password):
-                            st.session_state.authenticated = True
-                            st.session_state.username = username
-                            st.session_state.user_info = auth_manager.get_user_info(username)
-                            st.success("Login successful!")
-                            st.rerun()
+            tab1, tab2 = st.tabs(["Login", "Register"])
+            with tab1:
+                with st.form("login_form"):
+                    username = st.text_input("Username")
+                    password = st.text_input("Password", type="password")
+                    submit = st.form_submit_button("Login", use_container_width=True)
+                    if submit:
+                        if username and password:
+                            if auth_manager.authenticate(username, password):
+                                st.session_state.authenticated = True
+                                st.session_state.username = username
+                                st.session_state.user_info = auth_manager.get_user_info(username)
+                                st.success("Login successful!")
+                                st.rerun()
+                            else:
+                                st.error("Invalid username or password")
                         else:
-                            st.error("Invalid username or password")
-                    else:
-                        st.warning("Please enter both username and password")
-        with tab2:
-            with st.form("register_form"):
-                new_username = st.text_input("Choose Username")
-                new_name = st.text_input("Full Name")
-                new_password = st.text_input("Choose Password", type="password")
-                confirm_password = st.text_input("Confirm Password", type="password")
-                register = st.form_submit_button("Register", use_container_width=True)
-                if register:
-                    if not new_username or not new_password or not new_name:
-                        st.error("All fields are required")
-                    elif new_password != confirm_password:
-                        st.error("Passwords do not match")
-                    elif len(new_password) < 6:
-                        st.error("Password must be at least 6 characters")
-                    else:
-                        if auth_manager.register_user(new_username, new_password, new_name):
-                            st.success("Registration successful! Please login.")
+                            st.warning("Please enter both username and password")
+            with tab2:
+                with st.form("register_form"):
+                    new_username = st.text_input("Choose Username")
+                    new_name = st.text_input("Full Name")
+                    new_password = st.text_input("Choose Password", type="password")
+                    confirm_password = st.text_input("Confirm Password", type="password")
+                    register = st.form_submit_button("Register", use_container_width=True)
+                    if register:
+                        if not new_username or not new_password or not new_name:
+                            st.error("All fields are required")
+                        elif new_password != confirm_password:
+                            st.error("Passwords do not match")
+                        elif len(new_password) < 6:
+                            st.error("Password must be at least 6 characters")
                         else:
-                            st.error("Username already exists")
+                            if auth_manager.register_user(new_username, new_password, new_name):
+                                st.success("Registration successful! Please login.")
+                            else:
+                                st.error("Username already exists")
 
 def logout():
     st.session_state.authenticated = False
@@ -454,7 +480,8 @@ def load_data_file(uploaded_file):
 # Sales Pipeline Analyzer
 # =========================================================
 def sales_pipeline_analyzer():
-    st.header("💰 Sales Pipeline Analyzer")
+    st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
+    st.subheader("💰 Sales Pipeline Analyzer")
     show_free_pro_banner()
 
     if st.session_state.df_filtered is None:
@@ -469,6 +496,7 @@ def sales_pipeline_analyzer():
         - **Owner** or **Sales Rep**
         - **Probability** (optional)
         """)
+        st.markdown("</div>", unsafe_allow_html=True)
         return
 
     df = st.session_state.df_filtered
@@ -567,7 +595,7 @@ def sales_pipeline_analyzer():
                         plot_bgcolor='rgba(0,0,0,0)',
                         paper_bgcolor='rgba(0,0,0,0)',
                         font=dict(color='#e5e7eb'),
-                        height=500
+                        height=480
                     )
                     st.plotly_chart(fig_funnel, use_container_width=True)
                     st.dataframe(stage_summary, use_container_width=True, hide_index=True)
@@ -606,10 +634,10 @@ def sales_pipeline_analyzer():
                         color = "#ef4444"; grade = "Needs Improvement"
 
                     st.markdown(f"""
-                    <div style='text-align: center; padding: 20px; background: linear-gradient(135deg, rgba(6, 182, 212, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%); border-radius: 12px; border: 1px solid rgba(6, 182, 212, 0.3);'>
-                        <h1 style='color: {color}; font-size: 3.5rem; margin: 0;'>{score}</h1>
-                        <p style='font-size: 1rem; color: #9ca3af; margin: 5px 0;'>Data Quality</p>
-                        <p style='font-size: 0.9rem; color: #6b7280;'>{grade}</p>
+                    <div style='text-align: center; padding: 16px; background: linear-gradient(135deg, rgba(6, 182, 212, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%); border-radius: 12px; border: 1px solid rgba(6, 182, 212, 0.3);'>
+                        <h1 style='color: {color}; font-size: 2.8rem; margin: 0;'>{score}</h1>
+                        <p style='font-size: 0.95rem; color: #9ca3af; margin: 5px 0;'>Data Quality</p>
+                        <p style='font-size: 0.85rem; color: #6b7280;'>{grade}</p>
                     </div>
                     """, unsafe_allow_html=True)
 
@@ -668,7 +696,7 @@ def sales_pipeline_analyzer():
                         font=dict(color='#e5e7eb'),
                         xaxis=dict(gridcolor='rgba(55, 65, 81, 0.3)'),
                         yaxis=dict(gridcolor='rgba(55, 65, 81, 0.3)'),
-                        height=400
+                        height=380
                     )
                     st.plotly_chart(fig_owner, use_container_width=True)
 
@@ -712,6 +740,7 @@ def sales_pipeline_analyzer():
             except Exception as e:
                 st.error(f"Error analyzing pipeline: {str(e)}")
                 logger.error(f"Sales analysis error: {str(e)}")
+    st.markdown("</div>", unsafe_allow_html=True)
 
 # =========================================================
 # Cleaning / Filtering / Viz / Stats / Exports
@@ -851,7 +880,7 @@ def create_visualizations(df: pd.DataFrame):
                 font=dict(color='#e5e7eb'),
                 xaxis=dict(gridcolor='rgba(55, 65, 81, 0.3)'),
                 yaxis=dict(gridcolor='rgba(55, 65, 81, 0.3)'),
-                height=500
+                height=440
             )
             st.plotly_chart(fig, use_container_width=True)
             col1, col2, col3 = st.columns(3)
@@ -885,7 +914,7 @@ def create_visualizations(df: pd.DataFrame):
                 font=dict(color='#e5e7eb'),
                 xaxis=dict(gridcolor='rgba(55, 65, 81, 0.3)'),
                 yaxis=dict(gridcolor='rgba(55, 65, 81, 0.3)'),
-                height=500
+                height=460
             )
             st.plotly_chart(fig, use_container_width=True)
             if abs(correlation) > 0.7:
@@ -918,7 +947,7 @@ def create_visualizations(df: pd.DataFrame):
                 font=dict(color='#e5e7eb'),
                 xaxis=dict(gridcolor='rgba(55, 65, 81, 0.3)'),
                 yaxis=dict(gridcolor='rgba(55, 65, 81, 0.3)'),
-                height=500
+                height=460
             )
             st.plotly_chart(fig, use_container_width=True)
 
@@ -940,7 +969,7 @@ def create_visualizations(df: pd.DataFrame):
                 font=dict(color='#e5e7eb'),
                 xaxis=dict(gridcolor='rgba(55, 65, 81, 0.3)'),
                 yaxis=dict(gridcolor='rgba(55, 65, 81, 0.3)'),
-                height=500
+                height=440
             )
             st.plotly_chart(fig, use_container_width=True)
 
@@ -971,7 +1000,7 @@ def create_visualizations(df: pd.DataFrame):
                 plot_bgcolor='rgba(0,0,0,0)',
                 paper_bgcolor='rgba(0,0,0,0)',
                 font=dict(color='#e5e7eb'),
-                height=500
+                height=480
             )
             st.plotly_chart(fig, use_container_width=True)
 
@@ -1001,7 +1030,7 @@ def create_visualizations(df: pd.DataFrame):
                 font=dict(color='#e5e7eb'),
                 xaxis=dict(gridcolor='rgba(55, 65, 81, 0.3)'),
                 yaxis=dict(gridcolor='rgba(55, 65, 81, 0.3)'),
-                height=500
+                height=460
             )
             st.plotly_chart(fig, use_container_width=True)
 
@@ -1090,7 +1119,8 @@ def export_features():
 def display_data_overview():
     if st.session_state.df_filtered is None:
         return
-    st.header("Data Overview")
+    st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
+    st.subheader("📊 Data Overview")
     if st.session_state.is_sales_data:
         st.info("💰 Sales data detected! Check out the **Sales Pipeline** tab for specialized analysis.")
 
@@ -1116,10 +1146,10 @@ def display_data_overview():
         grade = quality_report['grade']
         color = "#10b981" if score >= 80 else ("#f59e0b" if score >= 60 else "#ef4444")
         st.markdown(f"""
-        <div style='text-align: center; padding: 20px; background: linear-gradient(135deg, rgba(6, 182, 212, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%); border-radius: 12px; border: 1px solid rgba(6, 182, 212, 0.3);'>
-            <h1 style='color: {color}; font-size: 3rem; margin: 0;'>{score}</h1>
-            <p style='font-size: 1.2rem; color: #9ca3af; margin: 5px 0;'>Trust Score</p>
-            <p style='font-size: 1rem; color: #6b7280;'>{grade}</p>
+        <div style='text-align: center; padding: 16px; background: linear-gradient(135deg, rgba(6, 182, 212, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%); border-radius: 12px; border: 1px solid rgba(6, 182, 212, 0.3);'>
+            <h1 style='color: {color}; font-size: 2.4rem; margin: 0;'>{score}</h1>
+            <p style='font-size: 0.95rem; color: #9ca3af; margin: 5px 0;'>Trust Score</p>
+            <p style='font-size: 0.9rem; color: #6b7280;'>{grade}</p>
         </div>
         """, unsafe_allow_html=True)
 
@@ -1149,11 +1179,13 @@ def display_data_overview():
 
     create_visualizations(df)
     export_features()
+    st.markdown("</div>", unsafe_allow_html=True)
 
 def display_statistics():
     if st.session_state.df_filtered is None:
         return
-    st.header("Statistical Analysis")
+    st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
+    st.subheader("📈 Statistical Analysis")
     tab1, tab2, tab3, tab4 = st.tabs(["Numeric Stats", "Categorical Stats", "Correlations", "Advanced"])
     with tab1:
         numeric_stats = DataAnalyzer.get_numeric_statistics(st.session_state.df_filtered)
@@ -1181,15 +1213,18 @@ def display_statistics():
             st.info("No significant correlations found")
     with tab4:
         clean_data_interface()
+    st.markdown("</div>", unsafe_allow_html=True)
 
 # =========================================================
-# Forecasting / Scenarios / Chat (unchanged structure)
+# Forecasting / Scenarios / Chat (structure preserved)
 # =========================================================
 def forecasting_interface():
-    st.header("⏰ Time-Series Forecasting")
+    st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
+    st.subheader("⏰ Time-Series Forecasting")
     show_free_pro_banner()
     if st.session_state.df_filtered is None:
         st.info("Please load data first")
+        st.markdown("</div>", unsafe_allow_html=True)
         return
     df = st.session_state.df_filtered
     quality_analyzer = DataQualityAnalyzer(df)
@@ -1205,6 +1240,7 @@ def forecasting_interface():
     time_cols = forecaster.detect_time_columns()
     if not time_cols:
         st.error("No date/time columns detected in the dataset.")
+        st.markdown("</div>", unsafe_allow_html=True)
         return
     st.subheader("Configure Forecast")
     col1, col2 = st.columns(2)
@@ -1214,6 +1250,7 @@ def forecasting_interface():
         numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
         if not numeric_cols:
             st.error("No numeric columns found for forecasting.")
+            st.markdown("</div>", unsafe_allow_html=True)
             return
         value_col = st.selectbox("Select Value to Forecast:", numeric_cols, key="forecast_value_col")
     method = st.radio("Forecasting Method:", ["Exponential Smoothing (Recommended)", "ARIMA"], key="forecast_method")
@@ -1228,10 +1265,12 @@ def forecasting_interface():
                 col_c.metric("Date Range", f"{validation['date_range'][0].strftime('%Y-%m-%d')} to {validation['date_range'][1].strftime('%Y-%m-%d')}")
                 if validation['total_points'] < 24:
                     st.error("Insufficient data for forecasting.")
+                    st.markdown("</div>", unsafe_allow_html=True)
                     return
                 st.markdown("---")
             except Exception as e:
                 st.error(f"Error preparing data: {str(e)}")
+                st.markdown("</div>", unsafe_allow_html=True)
                 return
         with st.spinner("Generating forecast..."):
             try:
@@ -1268,7 +1307,7 @@ def forecasting_interface():
                     font=dict(color='#e5e7eb'),
                     xaxis=dict(gridcolor='rgba(55, 65, 81, 0.3)'),
                     yaxis=dict(gridcolor='rgba(55, 65, 81, 0.3)'),
-                    height=600
+                    height=560
                 )
                 st.plotly_chart(fig, use_container_width=True)
                 st.subheader("Forecast Summary")
@@ -1296,18 +1335,23 @@ def forecasting_interface():
                 )
             except Exception as e:
                 st.error(f"Error generating forecast: {str(e)}")
+                st.markdown("</div>", unsafe_allow_html=True)
                 return
+    st.markdown("</div>", unsafe_allow_html=True)
 
 def scenario_simulation_interface():
-    st.header("🎯 Scenario Simulation")
+    st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
+    st.subheader("🎯 Scenario Simulation")
     show_free_pro_banner()
     if st.session_state.df_filtered is None:
         st.info("Please load data first")
+        st.markdown("</div>", unsafe_allow_html=True)
         return
     df = st.session_state.df_filtered
     numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
     if len(numeric_cols) < 2:
         st.error("Scenario simulation requires at least 2 numeric variables.")
+        st.markdown("</div>", unsafe_allow_html=True)
         return
     st.info("Simulate business scenarios by changing variables and see predicted impacts.")
     from src.utils.scenario_simulator import ScenarioSimulator
@@ -1376,15 +1420,19 @@ def scenario_simulation_interface():
                         col_b.write(f"**Estimated:** {effect['estimated_value']:.2f}")
             else:
                 st.info("No significant secondary effects detected.")
+    st.markdown("</div>", unsafe_allow_html=True)
 
 def chat_interface():
-    st.header("💬 Chat with Your Data")
+    st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
+    st.subheader("💬 Chat with Your Data")
     show_free_pro_banner()
     if st.session_state.df_filtered is None:
         st.info("Please load data first")
+        st.markdown("</div>", unsafe_allow_html=True)
         return
     if st.session_state.ai_agent is None:
         st.warning("AI Chat is not available. Please check your API configuration.")
+        st.markdown("</div>", unsafe_allow_html=True)
         return
     st.success("✨ Unlimited AI questions - Free for testing!")
     for message in st.session_state.chat_history:
@@ -1408,13 +1456,16 @@ def chat_interface():
                     error_msg = f"Error: {str(e)}"
                     st.error(error_msg)
                     logger.error(error_msg)
+    st.markdown("</div>", unsafe_allow_html=True)
 
 def subscription_interface():
+    st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
     st.subheader("💳 Subscription Management")
     show_free_pro_banner()
     username = st.session_state.get('username', '')
     if not username:
         st.warning("Please log in to manage subscriptions")
+        st.markdown("</div>", unsafe_allow_html=True)
         return
     sub_manager = SubscriptionManager()
     stripe_handler = StripeHandler()
@@ -1425,9 +1476,9 @@ def subscription_interface():
     col_free, col_pro = st.columns(2)
     with col_free:
         st.markdown("""
-        <div style='background: linear-gradient(135deg, rgba(6, 182, 212, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%); padding: 2rem; border-radius: 12px; border: 1px solid rgba(6, 182, 212, 0.3);'>
+        <div style='background: linear-gradient(135deg, rgba(6, 182, 212, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%); padding: 1.2rem; border-radius: 12px; border: 1px solid rgba(6, 182, 212, 0.3);'>
             <h3 style='color: #22d3ee; margin-top: 0;'>Free</h3>
-            <h2 style='color: #e5e7eb; margin: 0.5rem 0;'>$0/month</h2>
+            <h2 style='color: #e5e7eb; margin: 0.4rem 0;'>$0/month</h2>
         </div>
         """, unsafe_allow_html=True)
         for feature in sub_manager.TIERS['free']['features']:
@@ -1436,9 +1487,9 @@ def subscription_interface():
             st.success("✓ Current Plan")
     with col_pro:
         st.markdown("""
-        <div style='background: linear-gradient(135deg, rgba(245, 158, 11, 0.2) 0%, rgba(217, 119, 6, 0.2) 100%); padding: 2rem; border-radius: 12px; border: 1px solid rgba(245, 158, 11, 0.4);'>
+        <div style='background: linear-gradient(135deg, rgba(245, 158, 11, 0.2) 0%, rgba(217, 119, 6, 0.2) 100%); padding: 1.2rem; border-radius: 12px; border: 1px solid rgba(245, 158, 11, 0.4);'>
             <h3 style='color: #f59e0b; margin-top: 0;'>Pro <span style='background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.75rem;'>Popular</span></h3>
-            <h2 style='color: #e5e7eb; margin: 0.5rem 0;'>$24.99/month</h2>
+            <h2 style='color: #e5e7eb; margin: 0.4rem 0;'>$24.99/month</h2>
         </div>
         """, unsafe_allow_html=True)
         for feature in sub_manager.TIERS['pro']['features']:
@@ -1473,6 +1524,7 @@ def subscription_interface():
             st.write(feature)
         with col_b:
             st.success("Free")
+    st.markdown("</div>", unsafe_allow_html=True)
 
 # =========================================================
 # Main
@@ -1496,16 +1548,27 @@ def main():
     user_name = st.session_state.get('user_info', {}).get("name", st.session_state.get('username', 'User'))
     st.markdown(f'<p class="user-info">Logged in as: <strong>{user_name}</strong></p>', unsafe_allow_html=True)
 
-    # ======= HERO LOGO + HEADER =======
-    render_logo(kind="hero", max_width_px=960, center=True, margin="0.25rem 0 0.25rem")
-    st.markdown('<h1 class="main-header">AI DataChat</h1>', unsafe_allow_html=True)
-    st.markdown('<p class="tagline">Universal Intelligence Through Data</p>', unsafe_allow_html=True)
-    st.markdown("---")
+    # ======= COMPACT HEADER BAR (logo + title) =======
+    header = st.container()
+    with header:
+        c1, c2 = st.columns([1, 7], vertical_alignment="center")
+        with c1:
+            render_logo(kind="hero", max_width_px=HERO_LOGO_W, center=True, margin="0")
+        with c2:
+            st.markdown(
+                '<div class="topbar">'
+                f'<div>'
+                f'<div class="topbar-title">AI DataChat</div>'
+                f'<div class="topbar-tagline">Universal Intelligence Through Data</div>'
+                f'</div>'
+                f'</div>',
+                unsafe_allow_html=True
+            )
+    st.markdown("")
 
     # Sidebar
     with st.sidebar:
-        # Optional small mark in sidebar
-        render_logo(kind="icon", max_width_px=120, center=True, margin="0.25rem 0 0.75rem")
+        render_logo(kind="icon", max_width_px=ICON_LOGO_W, center=True, margin="0 0 0.6rem")
         st.header("📁 Upload Data")
         if st.button("🚪 Logout", key="logout_button", use_container_width=True):
             logout()
@@ -1544,25 +1607,28 @@ def main():
 
     # Tabs
     if st.session_state.df is None:
-        st.markdown("<div style='text-align:center;padding:3rem 0;'></div>", unsafe_allow_html=True)
-        # Center hero on welcome
-        render_logo(kind="hero", max_width_px=720, center=True, margin="0 0 1rem")
-        st.markdown("""
-            <h2 style='color: #22d3ee; font-weight: 300; margin-bottom: 1rem; margin-top: 0.5rem; text-align:center;'>Welcome to AI DataChat</h2>
-            <p style='color: #9ca3af; font-size: 1.2rem; margin-bottom: 2rem; text-align:center;'>
-                Transform your data into actionable insights with AI-powered analytics
-            </p>
-            <p style='color: #6b7280; text-align:center;'>
-                ← Start by uploading a file in the sidebar
-            </p>
-        """, unsafe_allow_html=True)
+        # Welcome panel
+        st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
+        c1, c2 = st.columns([1, 6], vertical_alignment="center")
+        with c1:
+            render_logo(kind="hero", max_width_px=HERO_LOGO_W, center=True, margin="0.25rem 0")
+        with c2:
+            st.markdown(
+                "<div class='section-title' style='font-size:1.6rem;'>Welcome to AI DataChat</div>",
+                unsafe_allow_html=True
+            )
+            st.markdown(
+                "<p style='color:#9ca3af;font-size:1.05rem;margin-top:0.25rem;'>Transform your data into actionable insights with AI-powered analytics.</p>",
+                unsafe_allow_html=True
+            )
+            st.caption("← Start by uploading a file in the sidebar")
         show_free_pro_banner()
         col1, col2 = st.columns(2)
         with col1:
             st.markdown("""
-            <div style='background: linear-gradient(135deg, rgba(6, 182, 212, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%); padding: 2rem; border-radius: 12px; border: 1px solid rgba(6, 182, 212, 0.3);'>
-                <h3 style='color: #22d3ee;'>✨ What you can do:</h3>
-                <ul style='color: #d1d5db;'>
+            <div class='glass-card'>
+                <h4 style='margin-top:0;color:#22d3ee;'>✨ What you can do</h4>
+                <ul style='color:#d1d5db;'>
                     <li>Upload and analyze CSV, Excel, JSON files</li>
                     <li>Interactive visualizations and statistics</li>
                     <li>Data cleaning and filtering</li>
@@ -1573,9 +1639,9 @@ def main():
             """, unsafe_allow_html=True)
         with col2:
             st.markdown("""
-            <div style='background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(5, 150, 105, 0.2) 100%); padding: 2rem; border-radius: 12px; border: 1px solid rgba(16, 185, 129, 0.4);'>
-                <h3 style='color: #10b981;'>🎉 All Features FREE:</h3>
-                <ul style='color: #d1d5db;'>
+            <div class='glass-card'>
+                <h4 style='margin-top:0;color:#10b981;'>🎉 All Features FREE</h4>
+                <ul style='color:#d1d5db;'>
                     <li>Time-series forecasting (6-month predictions)</li>
                     <li>Scenario simulation (what-if analysis)</li>
                     <li>Data quality trust scores</li>
@@ -1585,6 +1651,7 @@ def main():
                 </ul>
             </div>
             """, unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
     else:
         if st.session_state.is_sales_data:
             tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
