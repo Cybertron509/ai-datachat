@@ -1968,7 +1968,11 @@ def main():
     
     st.markdown("---")
     
-    # Rest of your app code continues...
+    with st.sidebar:
+        st.header("📁 Upload Data")
+        
+        if st.button("🚪 Logout", key="logout_button", use_container_width=True):
+            logout()
         
         st.markdown("---")
         
@@ -1983,8 +1987,6 @@ def main():
                 with st.spinner("Loading data..."):
                     if load_data_file(uploaded_file):
                         st.success("✅ Data loaded successfully!")
-                        if st.session_state.is_sales_data:
-                            st.info("💰 Sales data detected!")
         
         if st.session_state.df is not None:
             st.markdown("---")
